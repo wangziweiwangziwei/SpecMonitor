@@ -45,8 +45,8 @@ class MyListCtrlQuery(wx.ListCtrl):
         self.InsertColumn(1, u'参数类型')
         self.InsertColumn(2, u'参数值')
         self.SetColumnWidth(0, 100)
-        self.SetColumnWidth(1, 120)
-        self.SetColumnWidth(2, 120)
+        self.SetColumnWidth(1, 100)
+        self.SetColumnWidth(2, 100)
         for i in range(1,5301):
             self.InsertStringItem(i-1,str(i))
 

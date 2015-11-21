@@ -8,7 +8,7 @@ class DisplaySetDialog(wx.Dialog):
         self.CtrlSpec=wx.CheckBox(self,-1,u"功率谱",(35,60),(100,20))
         self.CtrlWater=wx.CheckBox(self,-1,u"瀑布图",(35,90),(100,20))
         wx.Button(self,wx.ID_OK,"OK",(35,150),(60,20))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(120,150),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(120,150),(60,20))
 class IQDisplaySetDialog(wx.Dialog):
     def __init__(self):
         wx.Dialog.__init__(self,None,-1,u"解调窗口选择",size=(200,250))
@@ -17,7 +17,7 @@ class IQDisplaySetDialog(wx.Dialog):
         self.CtrlDemodEye=wx.CheckBox(self,-1,u"眼图",(35,90),(100,20))
         self.CtrlDemodCCDF=wx.CheckBox(self,-1,u"CCDF",(35,120),(100,20))
         wx.Button(self,wx.ID_OK,"OK",(35,170),(60,20))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(120,170),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(120,170),(60,20))
 class AccessSetDialog(wx.Dialog):
     def __init__(self):
         wx.Dialog.__init__(self,None,-1,u"接入方式选择",size=(200,250))
@@ -25,21 +25,21 @@ class AccessSetDialog(wx.Dialog):
         self.CtrWifi=wx.CheckBox(self,-1,"WIFI",(35,60),(100,20))
         self.CtrlBT=wx.CheckBox(self,-1,"BLUETOOTH",(35,90),(100,20))
         wx.Button(self,wx.ID_OK,"OK",(35,150),(60,20))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(120,150),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(120,150),(60,20))
 class GainSetDialog(wx.Dialog):
     def __init__(self):
         wx.Dialog.__init__(self,None,-1,u"接收增益设置",size=(300,200))
         wx.StaticBox(self, -1, u'接受增益(dB)', (10, 20), size=(240, 60))
         self.sliderGain = wx.Slider(self,-1, 7,-1, 73, (20, 40), (220, -1),wx.SL_AUTOTICKS | wx.SL_HORIZONTAL | wx.SL_LABELS)
         wx.Button(self,wx.ID_OK,"OK",(20,100),(60,20))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(100,100),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(100,100),(60,20))
 class WeakSetDialog(wx.Dialog):
     def __init__(self):
         wx.Dialog.__init__(self,None,-1,u"发射衰减设置",size=(300,200))
         wx.StaticBox(self, -1, u'发射衰减(dB)', (10, 20), size=(240, 60))
         self.sliderWeak = wx.Slider(self,-1, 7,-1, 73, (20, 40), (220, -1),wx.SL_AUTOTICKS | wx.SL_HORIZONTAL | wx.SL_LABELS)
         wx.Button(self,wx.ID_OK,"OK",(20,100),(60,20))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(100,100),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(100,100),(60,20))
 class ThresSetDialog(wx.Dialog):
     def __init__(self):
         wx.Dialog.__init__(self,None,-1,u"检测门限设置(dB)",size=(300,200))
@@ -50,7 +50,7 @@ class ThresSetDialog(wx.Dialog):
         self.combox = wx.ComboBox(self, -1,value='20',pos=(80,40),size=(100,30),choices=sampleList)
         self.text = wx.TextCtrl(self, -1, "", pos=(80, 80),size=(100,25))
         wx.Button(self,wx.ID_OK,"OK",(20,130),(60,20))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(100,130),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(100,130),(60,20))
         
         self.text.Enable(False)
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadio, self.radio1)
@@ -58,15 +58,15 @@ class ThresSetDialog(wx.Dialog):
         self.selected=self.combox
     def OnRadio(self, event):
         if self.radio1.GetValue():
-        	self.combox.Enable(True)
-        	self.text.Enable(False)
-        	self.selected=self.combox
+            self.combox.Enable(True)
+            self.text.Enable(False)
+            self.selected=self.combox
 
         else:
             if self.radio2.GetValue():
-        	self.text.Enable(True)
-        	self.combox.Enable(False)
-        	self.selected=self.text
+                self.text.Enable(True)
+                self.combox.Enable(False)
+                self.selected=self.text
 
 class PressParaSetDialog(wx.Dialog):
     def __init__(self):
@@ -94,7 +94,7 @@ class PressParaSetDialog(wx.Dialog):
         self.textPressTotal=wx.TextCtrl(self, -1,"",(200,230),(80,25))
         
         wx.Button(self,wx.ID_OK,"OK",size=(60,20),pos=(20,280))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(100,280),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(100,280),(60,20))
         self.Bind(wx.EVT_RADIOBOX,self.OnRadio,self.radioFreq)
         self.textPressTime2.Enable(False)
         self.textPressTotal.Enable(False)
@@ -116,7 +116,7 @@ class PressOneSetDialog(wx.Dialog):
         self.textPressFreq=wx.TextCtrl(self,-1,"",(150,30),(80,25))
         
         wx.Button(self,wx.ID_OK,"OK",(35,70),(60,20))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(120,70),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(120,70),(60,20))
 
 
 class PressTwoSetDialog(wx.Dialog):
@@ -128,7 +128,7 @@ class PressTwoSetDialog(wx.Dialog):
         self.textPressFreq1=wx.TextCtrl(self,-1,"",(150,40),(80,25))
         self.textPressFreq2=wx.TextCtrl(self,-1,"",(150,70),(80,25))
         wx.Button(self,wx.ID_OK,"OK",(35,120),(60,20))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(120,120),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(120,120),(60,20))
         
 class IQFreqSetDialog(wx.Dialog):
     def __init__(self):
@@ -147,7 +147,7 @@ class IQFreqSetDialog(wx.Dialog):
         self.textFreq2=wx.TextCtrl(self,-1,"",(100,160),(60,25))
         self.textFreq3=wx.TextCtrl(self, -1,"",(180,160),(60,25))
         wx.Button(self,wx.ID_OK,"OK",size=(60,20),pos=(20,230))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(100,230),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(100,230),(60,20))
         
         self.textFreq2.Enable(False)
         self.textFreq3.Enable(False)
@@ -180,7 +180,7 @@ class IQParaSetDialog(wx.Dialog):
         wx.StaticText(self,-1,u"延时时间(s): ",(30,110))
         self.textDelay=wx.TextCtrl(self,-1,"",(200,110),(100,25))
         wx.Button(self,wx.ID_OK,"OK",size=(60,20),pos=(20,170))
-        wx.Button(self,wx.ID_CANCEL,"Cancel",(100,170),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(100,170),(60,20))
 
 class FullSweepSetDialog(wx.Dialog):
     def __init__(self):
@@ -209,7 +209,7 @@ class FullSweepSetDialog(wx.Dialog):
         sizer.Add((20,30))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadio)
@@ -263,7 +263,7 @@ class SpecialSweepSetDialog(wx.Dialog):
         sizer.Add((20,20))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadio)
@@ -361,7 +361,7 @@ class MutiSweepSetDialog(wx.Dialog):
         sizer.Add((20,20))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadio)
@@ -501,7 +501,7 @@ class ReqElecTrendDialog(wx.Dialog):
         sizer.Add((30,30))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadio)
@@ -610,7 +610,7 @@ class ReqElecPathDialog(wx.Dialog):
         sizer.Add((30,30))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         
         panel.SetSizer(sizer)
@@ -692,7 +692,7 @@ class ReqAbFreqDialog(wx.Dialog):
         sizer.Add((30,30))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
         
@@ -717,7 +717,7 @@ class QueryStationProDialog(wx.Dialog):
         sizer.Add((20,20))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
 
@@ -737,7 +737,7 @@ class QueryCurStationProDialog(wx.Dialog):
         sizer.Add((20,20))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
 
@@ -757,7 +757,7 @@ class QueryAllStationProDialog(wx.Dialog):
         sizer.Add((20,20))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
 
@@ -783,7 +783,7 @@ class QueryFreqPlanDialog(wx.Dialog):
         sizer.Add((20,20))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
 
@@ -906,7 +906,7 @@ class ChangeAnotherSweep(wx.Dialog):
         sizer.Add((20,20))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
         self.Bind(wx.EVT_RADIOBOX, self.OnRadio)
@@ -1026,7 +1026,7 @@ class SetSpecTimeDialog(wx.Dialog):
         sizer.Add((30,30))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
 
@@ -1085,7 +1085,7 @@ class SetDemodTimeDialog(wx.Dialog):
         sizer.Add((30,30))
         hBox1=wx.BoxSizer(wx.HORIZONTAL)
         hBox1.Add(wx.Button(panel,wx.ID_OK,"OK",size=(60,25)),0,wx.LEFT,20)
-        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"Cancel",size=(60,25)),0,wx.LEFT,20)
+        hBox1.Add(wx.Button(panel,wx.ID_CANCEL,"CANCEL",size=(60,25)),0,wx.LEFT,20)
         sizer.Add(hBox1)
         panel.SetSizer(sizer)
 

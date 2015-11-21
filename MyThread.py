@@ -2,6 +2,7 @@
 import threading
 import wx
 from Package import *
+#from HardwaveAccess import *
 MutexqueueFFT=threading.Lock()
 MutexqueueAbList=threading.Lock()
 MutexqueueSpecUpload=threading.Lock()
@@ -17,10 +18,11 @@ dictFreqPlan={1:u"固定",2:u"移动",3:u"无线电定位",4:u"卫星固定",5:u
               24:u"气象辅助",25:u"航空移动(R)",26:u"水上无线电导航",27:u"陆地移动",28:u"移动(航空移动(R)除外)",
               29:u"卫星无线电测定",30:u"卫星航空移动(R)",31:u"移动(航空移动(R)除外)",32:u"水上移动(遇险和呼叫)",
               33:u"水上移动(使用DSC的遇险和安全呼叫)",34:u"未划分"}
-###########接受硬件上传FFT数据和异常频点并放入队列############
+
+###########接受硬件上传FFT数据和异常频点并放入队列############    
 '''
 class ReceiveFFTThread(threading.Thread):
-	def __init__(self):
+    def __init__(self):
         threading.Thread.__init__(self)
         self.event = threading.Event()
         self.event.set()
@@ -29,33 +31,33 @@ class ReceiveFFTThread(threading.Thread):
         self.event.clear()
 
     def run(self):
-    	while(1):
+        while(1):
             self.event.wait()
-    		try:
-    	    	MutexqueueFFT.acquire()
-    	    	recvFFT=ReceiveFFT()
+            try:
+                MutexqueueFFT.acquire()
+                recvFFT=ReceiveFFT()
                 if(recvFFT):
-    	    	    queueFFT.append(recvFFT)
+                    queueFFT.append(recvFFT)
                     MutexqueueSpecUpload.acquire()
                     queueSpecUpload.append(recvFFT)
             except:
-            	print u"接收硬件上传FFT帧出错"
+                print u"接收硬件上传FFT帧出错"
             finally:
-    		    MutexqueueFFT.release()
+                MutexqueueFFT.release()   
             try:
-            	MutexqueueAbList.acquire()
+                MutexqueueAbList.acquire()
                 recvAbList=ReceiveAbList()
                 if(recvAbList):
-                    queueAbList.append(recvAbList)	
+                    queueAbList.append(recvAbList)    
                     queueSpecUpload.append(recvAbList)
                 
             except:
-            	print u"接收硬件上传异常频点出错"
+                print u"接收硬件上传异常频点出错"
             finally:
                 MutexqueueSpecUpload.release()
-                MutexqueueAbList.release()
+                MutexqueueAbList.release()  
 
-###################接收IQ数据并画图放入上传队列###############
+###################接收IQ数据并画图放入上传队列###############    
 
 class ReceiveIQThread(threading.Thread):
     def __init__(self,WaveFrame):
@@ -170,11 +172,11 @@ class ReceiveQueryThread(threading.Thread):
         dictSweep={u"扫频模式":SweepRecvMode,
                    u"文件上传模式":FileUploadMode,
                    u"频段总数": recvQueryData.SweepSectionTotalNum,
-                   u"频段序号",recvQueryData.SweepSectionNum,
-                   u"起始频段",recvQueryData.StartSectionNo,
-                   u"终止频段",recvQueryData.EndSectionNo,
-                   u"变化门限",recvQueryData.ChangeThres,
-                   u"文件上传抽取率",recvQueryData.ExtractM
+                   u"频段序号":recvQueryData.SweepSectionNum,
+                   u"起始频段":recvQueryData.StartSectionNo,
+                   u"终止频段":recvQueryData.EndSectionNo,
+                   u"变化门限":recvQueryData.ChangeThres,
+                   u"文件上传抽取率":recvQueryData.ExtractM
                    }
         self.Show(8,u"扫频",dictSweep)
 
@@ -182,7 +184,7 @@ class ReceiveQueryThread(threading.Thread):
         FreqArray=recvQueryData.FreqArray
         Freq=[0,0,0]
         for i in range(3):
-            Freq[i]=FreqArray[i].HighFreqInteger*256+FreqArray[i].LowFreqInteger
+            Freq[i]=FreqArray[i].HighFreqInteger*256+FreqArray[i].LowFreqInteger  \
              +float(FreqArray[i].HighFreqFraction*256+FreqArray[i].LowFreqFraction)/2**10
           
         dictIQFreq={
@@ -202,15 +204,15 @@ class ReceiveQueryThread(threading.Thread):
         elif(DataRate==0x04):DataRate=0.5e6
         elif(DataRate==0x05): DataRate=0.1e6 
 
-        Time=recvQueryData.Time
+        Time=recvQueryData.TimeSet
         dictIQPara={
-        u"数据率(MHz)": DataRate
-        u"数据块个数": recvQueryData.UploadNum
-        u"年": Time.HighYear*256+Time.LowYear
-        u"月":Time.Month
-        u"日":Time.Day
-        u"时":Time.HighHour*256+Time.LowHour
-        u"分":Time.Minute
+        u"数据率(MHz)": DataRate,
+        u"数据块个数": recvQueryData.UploadNum,
+        u"年": Time.HighYear*256+Time.LowYear,
+        u"月":Time.Month,
+        u"日":Time.Day,
+        u"时":Time.HighHour*256+Time.LowHour,
+        u"分":Time.Minute,
         u"秒":Time.Second
         }
         self.Show(8,u"定频",dictIQPara)
@@ -220,7 +222,7 @@ class ReceiveQueryThread(threading.Thread):
         FreqArray=recvQueryData.FreqArray
         Freq=[0,0]
         for i in range(2):
-            Freq[i]=FreqArray[i].HighFreqInteger*256+FreqArray[i].LowFreqInteger
+            Freq[i]=FreqArray[i].HighFreqInteger*256+FreqArray[i].LowFreqInteger   \
              +float(FreqArray[i].HighFreqFraction*256+FreqArray[i].LowFreqFraction)/2**10
           
         dictPressFreq={
@@ -301,7 +303,7 @@ class ReceiveQueryThread(threading.Thread):
         else:
             AltitudeFlag=u'海平面下'
 
-        dictIsConnect{
+        dictIsConnect={
         u"在网标志":IsConnect,
         u"终端类型":TerminalType,
         u"经度标志":LonFlag,
@@ -441,7 +443,7 @@ class LocalSaveThread(threading.Thread):
                     ChangeThres=2  #20dB
                 ###ExtractM 为从设置中得到的参数###############
                 head=SpecUploadHeader(0x00,recvFFT.LonLatAlti,recvFFT.SweepRecvMode,
-                    recvFFT.FileUploadMode,ChangeThres,ExtractM,TotalNum)
+                    recvFFT.FileUploadMode,ChangeThres,extractM,TotalNum)
                 blockFFT=FFTBlock(recvFFT.CurSectionNo,recvFFT.AllFreq)
                 blockAb=AbListBlock(recvAbList.CurSectionNo,recvAbList.AbFreqNum,recvAbList.AllAbFreq)
                 self.SpecList.append(blockFFT)
@@ -455,15 +457,15 @@ class LocalSaveThread(threading.Thread):
             except:
                 print u'本地功率谱存文件线程出错'  
     def WriteLocalFile(self,time,ID,head,SpecList):
-        Year=Time.HighYear*256+Time.LowYear
-        Month=Time.Month
-        Day=Time.Day
-        Hour=Time.HighHour*256+Time.LowHour
-        Minute=Time.Minute
-        Second=Time.Second
-        fileName=str(Year)+"-"+str(Month)+"-"+str(Day)+
+        Year=TimeSet.HighYear*256+TimeSet.LowYear
+        Month=TimeSet.Month
+        Day=TimeSet.Day
+        Hour=TimeSet.HighHour*256+TimeSet.LowHour
+        Minute=TimeSet.Minute
+        Second=TimeSet.Second
+        fileName=str(Year)+"-"+str(Month)+"-"+str(Day)+  \
                  "-"+str(Hour)+"-"+str(Minute)+"-"+Second+"-"+str(ID)+'.pwr'
-        fid=fopen(".\LocalData\\"+ fileName,'w')
+        fid=open(".\LocalData\\"+ fileName,'w')
         for x in head.bytes:
             fid.write(str(x)+'\n')
         for i in xrange(len(SpecList)/2):
@@ -478,10 +480,10 @@ class LocalSaveThread(threading.Thread):
         fid.write('0\n')
         fid.close()
 
-
+'''
 ##############本地IQ波形文件存储#################################
 #class LocalSaveThread()
-'''
+
 ############中心站响应数据接收##################################
 class ReceiveServerData(threading.Thread):
     def __init__(self,specFrame,sock):
@@ -502,7 +504,8 @@ class ReceiveServerData(threading.Thread):
             for i in frameLen:
                 dataLen.append(ord(i))
               
-            dataLength=(dataLen[0]<<56)+(dataLen[1]<<48)+(dataLen[2]<<40)+(dataLen[3]<<32)+(dataLen[4]<<24)+(dataLen[5]<<16)+(dataLen[6]<<8)+dataLen[7]  
+            dataLength=(dataLen[0]<<56)+(dataLen[1]<<48)+(dataLen[2]<<40)+ \
+            (dataLen[3]<<32)+(dataLen[4]<<24)+(dataLen[5]<<16)+(dataLen[6]<<8)+dataLen[7]  
             frameData=self.sock.recv(dataLength)
             print 'dataLength',dataLength
             for i in frameData:
@@ -522,12 +525,16 @@ class ReceiveServerData(threading.Thread):
             elif(frameFlag==182):
                 self.ReadStationCurProResponse(ListData)
             elif(frameFlag==183):
-                '''
-                self.specFrame.panelQuery.SetColumn(0,u'起始频率（Mhz）')
-                self.specFrame.panelQuery.SetColumn(1,u"终止频率（Mhz）")
-                self.specFrame.panelQuery.SetColumn(2,u"业务类型")
-                '''
+                List=[(0,u"起始频率（Mhz）"),(1,u"终止频率（Mhz）"),(2,u"业务类型 1")]
+                for i in range(3):
+                    col = self.specFrame.panelQuery.GetColumn(i)
+                    col.SetText(List[i][1])
+                    self.specFrame.panelQuery.SetColumn(i, col)
                 self.ReadFreqPlanResponse(ListData)
+                
+                for i in range(7):
+                    self.specFrame.panelQuery.InsertColumn(i+3,u"业务类型"+str(i))
+                    self.specFrame.panelQuery.SetColumnWidth(100)
             else:
                 print 'frameFlag  Error'
            
@@ -547,11 +554,11 @@ class ReceiveServerData(threading.Thread):
         i=4
         count=0
         lenData=len(ListData)
-        while(i<lenData-7):
-            startHigh4bit=(ListData[i+2])/16
-            startLow4bit=ListData[i+2]-startHigh4bit*16
-            endHigh4bit=ListData[i+6]/16
-            endLow4bit=ListData[i+6]-endHigh4bit*16
+        while(i<lenData-3):
+            startHigh4bit=(ListData[i+2])>>4
+            startLow4bit=ListData[i+2]&0x0F
+            endHigh4bit=ListData[i+6]>>4
+            endLow4bit=ListData[i+6]&0x0F
             startFreqInteger=(ListData[i]<<12)+(ListData[i+1]<<4)+startHigh4bit
             startFreqFraction=float((startLow4bit<<8)+ListData[i+3])/2**12
             endFreqInteger=(ListData[i+4]<<12)+(ListData[i+5]<<4)+endHigh4bit
@@ -566,22 +573,19 @@ class ReceiveServerData(threading.Thread):
                 freqPro.append(ListData[j])
                 r=r+1
                 j=j+1
+            
+            self.specFrame.panelQuery.SetStringItem(count,0,str('%0.5f'%startFreq))
+            self.specFrame.panelQuery.SetStringItem(count,1,str('%0.5f'%endFreq))
             for k in xrange(len(freqPro)):
-                self.specFrame.panelQuery.SetStringItem(k+count,0,str('%0.5f'%startFreq))
-                self.specFrame.panelQuery.SetStringItem(k+count,1,str('%0.5f'%endFreq))
-                '''
-                if(k==0):
-                    self.specFrame.panelQuery.SetStringItem(k+count,2,dictFreqPlan[freqPro[k]]+u"  (主)")
-                else:
-                    self.specFrame.panelQuery.SetStringItem(k+count,2,dictFreqPlan[freqPro[k]])
-                '''
-                self.specFrame.panelQuery.SetStringItem(count,2,dictFreqPlan[freqPro[0]]+u"  (主)")
-                for k in xrange(1,len(freqPro)):
-                    self.specFrame.panelQuery.SetStringItem(k+count,2,dictFreqPlan[freqPro[k]])
-            count=count+len(freqPro)
+                self.specFrame.panelQuery.SetStringItem(count,k+2,dictFreqPlan[freqPro[k]])
+            count=count+1
             i=i+16
             
-
+            while(count<1000):
+                self.specFrame.panelQuery.SetStringItem(count,0,'')
+                self.specFrame.panelQuery.SetStringItem(count,1,'')
+                self.specFrame.panelQuery.SetStringItem(count,2,'')
+                count=count+1
         
 '''
     

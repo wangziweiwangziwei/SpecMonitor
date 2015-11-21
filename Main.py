@@ -59,9 +59,9 @@ class MainWindow(wx.MDIParentFrame):
         self.serverCom=ServerCommunication()
         
         #################硬件端口定义##############
-        self.inPoint1=0
-        self.inPoint2=0
-        self.inPoint3=0
+        self.inPointFFT=0
+        self.inPointIQ=0
+        self.inPointAb=0
         self.outPoint=0
         
         ################公共帧###################
@@ -294,11 +294,11 @@ class MainWindow(wx.MDIParentFrame):
         #0x01
         self.outPoint=intf[0]
         #0x81 fft
-        self.inPoint1=intf[1]
+        self.inPointFFT=intf[1]
         #0x82 iq
-        self.inPoint2=intf[3]
+        self.inPointIQ=intf[3]
         #0x83 query receive and abFreq
-        self.inPoint3=intf[5]
+        self.inPointAb=intf[5]
         transfer=TransferSet()
         transfer.CommonHeader=FrameHeader(0x55,0x0A,0x0F,0)
         transfer.CommonTail=self.tail
@@ -365,8 +365,8 @@ class MainWindow(wx.MDIParentFrame):
                 thresMode=0x00
                 thresSet.AdaptThres=thres
             else:    
-                thresSet.HighFixedThres=thres& 0xF0;
-                thresSet.LowFixedThres=thres& 0x0F;
+                thresSet.HighFixedThres=thres>>8
+                thresSet.LowFixedThres=thres& 0x00FF    
                 
             header=FrameHeader(0x55,0x06,0x0F,0x00)
             thresSet.CommonHeader=header 
@@ -411,19 +411,19 @@ class MainWindow(wx.MDIParentFrame):
             else:
                 pressSet.PressSignalBandWidth=PressSignal+1
             if(freqNum==0):
-                pressSet.HighT1=oneFreqT1&0xF0
-                pressSet.LowT1=oneFreqT1&0x0F
-                pressSet.HighT2=oneFreqT2&0xF0
-                pressSet.LowT2= oneFreqT2&0x0F    
+                pressSet.HighT1=oneFreqT1>>8
+                pressSet.LowT1=oneFreqT1&0x00FF
+                pressSet.HighT2=oneFreqT2>>8
+                pressSet.LowT2= oneFreqT2&0x00FF    
             else:
-                pressSet.HighT1=twoFreqT1&0xF0
-                pressSet.LowT1=twoFreqT1&0x0F
-                pressSet.HighT2=twoFreqT2&0xF0
-                pressSet.LowT2= twoFreqT2&0x0F
-                pressSet.HighT3=twoFreqT3&0xF0
-                pressSet.LowT3=twoFreqT3&0x0F
-                pressSet.HighT4=twoFreqT4&0xF0
-                pressSet.LowT4=twoFreqT4&0x0F 
+                pressSet.HighT1=twoFreqT1>>8
+                pressSet.LowT1=twoFreqT1&0x00FF
+                pressSet.HighT2=twoFreqT2>>8
+                pressSet.LowT2= twoFreqT2&0x00FF
+                pressSet.HighT3=twoFreqT3>>8
+                pressSet.LowT3=twoFreqT3&0x00FF
+                pressSet.HighT4=twoFreqT4>>8
+                pressSet.LowT4=twoFreqT4&0x00FF 
             pressSet.CommonTail=self.tail
             self.outPoint.write(bytearray(pressSet))
         dlg.Destroy()
@@ -451,7 +451,7 @@ class MainWindow(wx.MDIParentFrame):
         lowFreqInt=freqInt&0x003F
         highFreqFrac=freqF>>8
         lowFreqFrac=freqF&0x0FF
-        return (highFreqInt,lowFreqInt,highFreqFrac,lowFreqFrac)
+        return (highFreqInt,highFreqFrac,lowFreqInt,lowFreqFrac)
         
 
     def OnSetPressTwo(self,event):
@@ -554,36 +554,26 @@ class MainWindow(wx.MDIParentFrame):
                 sweepRangeSet.ChangeThres=int(dlg.ChangeThres.GetValue())
             else:
                 sweepRangeSet.FileUploadMode=1
-            
-            freqStart=int(dlg.FreqStart1.GetValue())
-            freqEnd=int(dlg.FreqEnd1.GetValue())
-            array=self.SweepSection(freqStart, freqEnd)
-            sweepRangeSet= self.FillSweepRange(sweepRangeSet, array)
-            self.outPoint.write(bytearray(sweepRangeSet))
-            if(dlg.FreqStart2.GetValue()):
-                freqStart=int(dlg.FreqStart2.GetValue())
-                freqEnd=int(dlg.FreqEnd2.GetValue())
-                array=self.SweepSection(freqStart, freqEnd)
-                sweepRangeSet= self.FillSweepRange(sweepRangeSet, array)
-                self.outPoint.write(bytearray(sweepRangeSet))
-            if(dlg.FreqStart3.GetValue()):
-                freqStart=int(dlg.FreqStart3.GetValue())
-                freqEnd=int(dlg.FreqEnd3.GetValue())
-                array=self.SweepSection(freqStart, freqEnd)
-                sweepRangeSet= self.FillSweepRange(sweepRangeSet, array)
-                self.outPoint.write(bytearray(sweepRangeSet))
-            if(dlg.FreqStart4.GetValue()):
-                freqStart=int(dlg.FreqStart4.GetValue())
-                freqEnd=int(dlg.FreqEnd4.GetValue())
-                array=self.SweepSection(freqStart, freqEnd)
-                sweepRangeSet= self.FillSweepRange(sweepRangeSet, array)
-                self.outPoint.write(bytearray(sweepRangeSet))
-            if(dlg.FreqStart5.GetValue()):
-                freqStart=int(dlg.FreqStart5.GetValue())
-                freqEnd=int(dlg.FreqEnd5.GetValue())
-                array=self.SweepSection(freqStart, freqEnd)
-                sweepRangeSet= self.FillSweepRange(sweepRangeSet, array)
-                self.outPoint.write(bytearray(sweepRangeSet))                
+                
+            totalNum=0
+            listFreq=[(dlg.FreqStart1.GetValue(),dlg.FreqStart1.GetValue()),  \
+                      (dlg.FreqStart2.GetValue(),dlg.FreqStart2.GetValue()),  \
+                      (dlg.FreqStart3.GetValue(),dlg.FreqStart3.GetValue()),  \
+                      (dlg.FreqStart4.GetValue(),dlg.FreqStart4.GetValue()),  \
+                      (dlg.FreqStart5.GetValue(),dlg.FreqStart5.GetValue())
+                      ]  
+            for i in range(5):
+                if(listFreq[i][0]):
+                    totalNum+=1
+            sweepRangeSet.SweepSectionTotalNum=totalNum
+            for i in range(5):
+                if(listFreq[i][0]):
+                    sweepRangeSet.SweepSectionNo=i+1
+                    freqStart=int(listFreq[i][0])
+                    freqEnd=int(listFreq[i][1])
+                    array=self.SweepSection(freqStart, freqEnd)
+                    sweepRangeSet=self.FillSweepRange(sweepRangeSet, array)
+                    self.outPoint.write(bytearray(sweepRangeSet))                      
         dlg.Destroy()        
             
                             
@@ -625,14 +615,14 @@ class MainWindow(wx.MDIParentFrame):
             iqFreq.CommonHeader=FrameHeader(0x55,0x02,0x0F,0)
             iqFreq.CommonTail=self.tail
             listFreq=[]
-            Freq1=int(dlg.textFreq1.GetValue())
+            Freq1=float(dlg.textFreq1.GetValue())
             Freq2=dlg.textFreq2.GetValue()
             Freq3=dlg.textFreq3.GetValue()
             listFreq.append(Freq1)
             if(Freq2):
-                listFreq.append(Freq2)
+                listFreq.append(float(Freq2))
             if(Freq3):
-                listFreq.append(Freq3)
+                listFreq.append(float(Freq3))
             for i in xrange(len(listFreq)):
                 array=self.FreqToByte(listFreq[i])
                 iqFreq.FreqArray[i]=CentreFreq(array[0],array[1],array[2],array[3])
@@ -745,13 +735,13 @@ class MainWindow(wx.MDIParentFrame):
             freqStart=int(dlg.FreqStart.GetValue())
             freqEnd=int(dlg.FreqEnd.GetValue())
         dlg.Destroy()
-        highFreqStart=freqStart/65536
-        midFreqStart=(freqStart-highFreqStart*65536)/256
-        lowFreqStart=freqStart-highFreqStart*65536-midFreqStart*256
+        highFreqStart=freqStart>>16
+        midFreqStart=(freqStart&0x00FF00)>>8
+        lowFreqStart=freqStart&0x0000FF
         
-        highFreqEnd=freqEnd/65536
-        midFreqEnd=(freqEnd-highFreqEnd*65536)/256
-        lowFreqEnd=freqEnd-highFreqEnd*65536-midFreqEnd*256
+        highFreqEnd=freqEnd>>16
+        midFreqEnd=(freqEnd&0x00FF00)>>8
+        lowFreqEnd=freqEnd&0x0000FF
         header=FrameHeader(0x55,0xA7,0x0F,0)
         
         structObj=QueryFreqPlan(header,highFreqStart,midFreqStart,lowFreqStart,highFreqEnd,midFreqEnd,lowFreqEnd,self.tail)

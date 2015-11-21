@@ -9,7 +9,7 @@ import scipy.signal as signal
 from math import sqrt, log10, pi, cos, sin, atan
 #import ClassClust
 #import ClassDemod
-	
+    
 class Constel(wx.MDIChildFrame):
     def __init__(self,parent):
         wx.MDIChildFrame.__init__(self,parent,-1,title="Constellation ")

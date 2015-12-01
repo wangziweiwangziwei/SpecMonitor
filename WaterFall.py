@@ -3,14 +3,16 @@ import wx
 from numpy import array, linspace
 import matplotlib
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas 
-from matplotlib.cm import  jet 
+from matplotlib.cm import jet
+
 
 class Water(wx.MDIChildFrame):
     def __init__(self,parent):
         wx.MDIChildFrame.__init__(self,parent,-1,title="WaterFall ")
         self.waterFirst=1
-        self.col=800
+        self.col=1024
         self.row=500
+        self.rowCpy=5
         self.CreatePanel()
         self.setWfLabel()
         
@@ -36,31 +38,26 @@ class Water(wx.MDIChildFrame):
             tick_labels=[str(int(i)) for i in ticks]
             cbar.set_ticklabels(tick_labels)
             self.waterFirst=0
-        else:
-            while(self.draw5water%6):
-                yTmp=[]
-                for j in range(self.col):
-                    ySum=max(yData[j*self.samplIntv:(j+1)*self.samplIntv])
-                    yTmp.append(ySum)          
-                del self.matrixFull[self.row-self.rowCpy:self.row]
-        
-                for i in range(self.rowCpy):
-                    self.matrixFull.insert(0,yTmp)
-                self.image.set_data(array(self.matrixFull))
-                self.FigureCanvas.draw()
-                self.draw5water=self.draw5water+1
-            self.draw5water=1
+            self.FigureCanvas.draw()
+        else: 
+            del self.matrixFull[self.row-self.rowCpy:self.row]
+    
+            for i in range(self.rowCpy):
+                self.matrixFull.insert(0,yData)
+            self.image.set_data(array(self.matrixFull))
+            self.FigureCanvas.draw()
+          
+           
 
     def setWfLabel(self):
         self.ylabel('Frame Number')
         self.xlabel('MHz')
         xLabelNum = 10
         intervalX = self.col/xLabelNum
-        xticks = range(0, self.col, intervalX)
-        xticklabels = [str(i) for i in range(0,51,5)]
+        xticks = range(0, self.col+1, intervalX)
         self.axes.set_xticks(xticks)
-        self.axes.set_xticklabels(xticklabels,rotation=0)
-
+        xticklabels = [str(i) for i in xticks]
+        self.axes.set_xticklabels(xticklabels,rotation=0) 
         intervalY = self.row/xLabelNum
         yticks = range(0, self.row+1, intervalY)
         yticklabels = [str(i) for i in yticks]

@@ -2,86 +2,93 @@
 import threading
 import wx
 from Package import *
-#from HardwaveAccess import *
-MutexqueueFFT=threading.Lock()
-MutexqueueAbList=threading.Lock()
-MutexqueueSpecUpload=threading.Lock()
-MutexqueueIQUpload=threading.Lock()
-queueFFT=[]
-queueAbList=[]
-queueSpecUpload=[]
-queueIQUpload=[]
-dictFreqPlan={1:u"固定",2:u"移动",3:u"无线电定位",4:u"卫星固定",5:u"空间研究",6:u"卫星地球探测",
-              7:u"射电天文",8:u"广播",9:u"移动(航空移动除外)",10:u"无线电导航",11:u"航空无线电导航",
-              12:u"水上移动",13:u"卫星移动",14:u"卫星间",15:u"卫星无线电导航",16:u"业余",17:u"卫星气象",18:u"标准频率和时间信号",
-              19:u"空间操作",20:u"航空移动",21:u"卫星业余",22:u"卫星广播",23:u"航空移动(OR)",
-              24:u"气象辅助",25:u"航空移动(R)",26:u"水上无线电导航",27:u"陆地移动",28:u"移动(航空移动(R)除外)",
-              29:u"卫星无线电测定",30:u"卫星航空移动(R)",31:u"移动(航空移动(R)除外)",32:u"水上移动(遇险和呼叫)",
-              33:u"水上移动(使用DSC的遇险和安全呼叫)",34:u"未划分"}
+from HardwareAccess import *
+import time
+import Queue
 
-###########接受硬件上传FFT数据和异常频点并放入队列############    
-'''
+##包括了功率谱和异常频点(功率谱数据帧后紧跟异常频点帧)
+
+queueFFT=Queue.Queue(maxsize=100)
+queueAbList=Queue.Queue(maxsize=100)
+queueSpecUpload=Queue.Queue(maxsize=1000)
+queueIQUpload=Queue.Queue(maxsize=1000)
+queueRecvQuery=Queue.Queue()
+
+
+###########接受硬件上传FFT数据和异常频点并放入队列############ 
+  
+
 class ReceiveFFTThread(threading.Thread):
-    def __init__(self):
+    def __init__(self,recvHardObj):
         threading.Thread.__init__(self)
         self.event = threading.Event()
         self.event.set()
-
+        self.recvHardObj=recvHardObj
     def stop(self):
         self.event.clear()
 
     def run(self):
         while(1):
+            time.sleep(0.5)
             self.event.wait()
+            print u'FFT_查询回复包接收线程'
             try:
-                MutexqueueFFT.acquire()
-                recvFFT=ReceiveFFT()
-                if(recvFFT):
-                    queueFFT.append(recvFFT)
-                    MutexqueueSpecUpload.acquire()
-                    queueSpecUpload.append(recvFFT)
+                recvFFT=self.recvHardObj.ReceiveFFT()   ###recvFFT 为功率谱帧对象
+                if(not recvFFT==0):
+                    queueFFT.put(recvFFT)
+                   
+                    if(recvFFT.CommonHeader.FunctionPara==0x0D):    
+                        queueSpecUpload.put(recvFFT)
             except:
-                print u"接收硬件上传FFT帧出错"
-            finally:
-                MutexqueueFFT.release()   
+                pass
+              
             try:
-                MutexqueueAbList.acquire()
-                recvAbList=ReceiveAbList()
-                if(recvAbList):
-                    queueAbList.append(recvAbList)    
-                    queueSpecUpload.append(recvAbList)
-                
+                recvData=self.recvHardObj.ReceiveAb_Recv()
+                if(not recvData==0):
+                    if(recvData.CommonHeader.FunctionPara==0x0E): 
+                        queueAbList.put(recvData)    
+                        queueSpecUpload.put(recvData)
+                    else:
+                        queueRecvQuery.put(recvData)
+                    
+                        
             except:
-                print u"接收硬件上传异常频点出错"
-            finally:
-                MutexqueueSpecUpload.release()
-                MutexqueueAbList.release()  
+                pass            
 
 ###################接收IQ数据并画图放入上传队列###############    
 
 class ReceiveIQThread(threading.Thread):
-    def __init__(self,WaveFrame):
+    def __init__(self,recvHardObj,WaveFrame):
         threading.Thread.__init__(self)
         self.event = threading.Event()
         self.event.set()
+        self.recvHardObj=recvHardObj
         self.WaveFrame=WaveFrame
         self.Fs=5e6
     def stop(self):
         self.event.clear()
 
     def run(self):
-        while(waveShow):
+        while(1):
+            time.sleep(0.5)
             self.event.wait()
+            print u'接收IQ数据并画图线程'
             try:
-                recvIQ=ReceiveIQ()  
-                if(recvIQ):
+                
+                recvIQ=self.recvHardObj.ReceiveIQ()
+               
+                if(not recvIQ==0):
+                   
                     chData=[]
-                    DataRate=recvIQ.IQDataPartHead.DataRate
+                    DataRate=recvIQ.Param.DataRate
+                    
                     if(DataRate==0x01):self.Fs=5e6
                     elif(DataRate==0x02): self.Fs=2.5e6
                     elif(DataRate==0x03):self.Fs=1e6
                     elif(DataRate==0x04):self.Fs=0.5e6
-                    elif(DataRate==0x05): self.Fs=0.1e6 
+                    elif(DataRate==0x05): self.Fs=0.1e6
+                    else:
+                        pass
                     print "IQ Wave BandWidth -->",self.Fs
 
                     DataArray=recvIQ.IQDataAmp
@@ -90,29 +97,23 @@ class ReceiveIQThread(threading.Thread):
                         HighQPath=IQData.HighQPath
                         LowIPath=IQData.LowIPath
                         LowQPath=IQData.LowQPath
-                        if(HighIPath<0):
-                            IData=(-1)*(abs(HighIPath)*256+LowIPath)
+                        if(HighIPath>=8):
+                            IData=(HighIPath<<8)+LowIPath-2**12
                         else:
-                            IData=HighIPath*256+LowIPath
-                        if(HighQPath<0):
-                            QData=(-1)*(abs(HighQPath)*256+LowQPath)
+                            IData=(HighIPath<<8)+LowIPath
+                        if(HighQPath>=8):
+                            QData=(HighQPath)<<8+LowQPath-2**12
                         else:
-                            QData=HighQPath*256+LowQPath
+                            QData=(HighQPath<<8)+LowQPath
                         chData.append(complex(IData,QData))
-                    try:
-                        self.WaveFrame.Wave(self.Fs,chData)
-                    except wx.PyDeadObjectError:
-                        pass
-
-                    try:
-                        MutexqueueIQUpload.acquire()
-                        queueIQUpload.append(recvIQ)
-                    finally:
-                        MutexqueueIQUpload.release()
+                
+                    if(not self.WaveFrame==None):
+                        self.WaveFrame.Wave(self.Fs,IData)
+                    
+                    queueIQUpload.put(recvIQ)
             except:
-                print u'接收IQ数据并画图放入上传队列出错'
-
-#################接收查询回复包线程########################
+                pass
+#################查询回复包解析显示线程########################
 class ReceiveQueryThread(threading.Thread):
     def __init__(self,SpecFrame):
         threading.Thread.__init__(self)
@@ -122,36 +123,40 @@ class ReceiveQueryThread(threading.Thread):
     def stop(self):
         self.event.clear()
     def run(self):
-        while(specShow):
+        while(1):
+            time.sleep(0.5)
             self.event.wait()
-            recvQueryData=ReceiveQueryData()
-            if(recvQueryData):
+            print u'查询回复包显示线程'
+            recvData=0
+            if(not queueRecvQuery.empty()):    
+                recvData=queueRecvQuery.get()
 
-                functionPara=revQueryData.CommonHeader.FunctionPara
+            if(not recvData==0):
+                functionPara=recvData.CommonHeader.FunctionPara
                 if(functionPara==0x21):     
-                    self.ShowSweepRange(recvQueryData)
+                    self.ShowSweepRange(recvData)
                 elif(functionPara==0x22):
-                    self.ShowIQCentreFreq(recvQueryData)
+                    self.ShowIQCentreFreq(recvData)
                 elif(functionPara==0x23):
-                    self.ShowPressFreq(recvQueryData)
+                    self.ShowPressFreq(recvData)
                 elif(functionPara==0x24):
-                    self.ShowRecvGain(recvQueryData)
+                    self.ShowRecvGain(recvData)
                 elif(functionPara==0x25):
-                    self.ShowSendWeak(recvQueryData)
+                    self.ShowSendWeak(recvData)
                 elif(functionPara==0x26):
-                    self.ShowTestGate(recvQueryData)
+                    self.ShowTestGate(recvData)
                 elif(functionPara==0x27):
-                    self.ShowIQPara(recvQueryData) 
+                    self.ShowIQPara(recvData) 
                 elif(functionPara==0x28):
-                    self.ShowPressPara(recvQueryData)
+                    self.ShowPressPara(recvData)
                 elif(functionPara==0x29):
-                    self.ShowAccessWay(recvQueryData)
+                    self.ShowAccessWay(recvData)
                 elif(functionPara==0x2A):
-                    self.ShowTransferOpen(recvQueryData)
+                    self.ShowTransferOpen(recvData)
                 elif(functionPara==0x2B):
-                    self.ShowTransferClose(recvQueryData)
+                    self.ShowTransferClose(recvData)
                 elif(functionPara==0x2C):
-                    self.ShowIsConnect(recvQueryData)
+                    self.ShowIsConnect(recvData)
                 else:
                     pass
     def ShowSweepRange(self,recvQueryData):
@@ -172,11 +177,11 @@ class ReceiveQueryThread(threading.Thread):
         dictSweep={u"扫频模式":SweepRecvMode,
                    u"文件上传模式":FileUploadMode,
                    u"频段总数": recvQueryData.SweepSectionTotalNum,
-                   u"频段序号":recvQueryData.SweepSectionNum,
-                   u"起始频段":recvQueryData.StartSectionNo,
-                   u"终止频段":recvQueryData.EndSectionNo,
-                   u"变化门限":recvQueryData.ChangeThres,
-                   u"文件上传抽取率":recvQueryData.ExtractM
+                   u"频段序号":str(recvQueryData.SweepSectionNum),
+                   u"起始频段":str(recvQueryData.StartSectionNo),
+                   u"终止频段":str(recvQueryData.EndSectionNo),
+                   u"变化门限":str(recvQueryData.ChangeThres),
+                   u"文件上传抽取率":str(recvQueryData.ExtractM)
                    }
         self.Show(8,u"扫频",dictSweep)
 
@@ -184,14 +189,14 @@ class ReceiveQueryThread(threading.Thread):
         FreqArray=recvQueryData.FreqArray
         Freq=[0,0,0]
         for i in range(3):
-            Freq[i]=FreqArray[i].HighFreqInteger*256+FreqArray[i].LowFreqInteger  \
-             +float(FreqArray[i].HighFreqFraction*256+FreqArray[i].LowFreqFraction)/2**10
+            Freq[i]=(FreqArray[i].HighFreqInteger<<6)+FreqArray[i].LowFreqInteger  \
+             +float((FreqArray[i].HighFreqFraction<<8)+FreqArray[i].LowFreqFraction)/2**10
           
         dictIQFreq={
-        u"定频频点个数":recvQueryData.FreqNum,
-        u"频率值1(Mhz)": Freq[0],
-        u"频率值2(Mhz)": Freq[1],
-        u"频率值3(Mhz)": Freq[2]
+        u"定频频点个数":str(recvQueryData.FreqNum),
+        u"频率值1(Mhz)": str(Freq[0]),
+        u"频率值2(Mhz)": str(Freq[1]),
+        u"频率值3(Mhz)": str(Freq[2])
         }
         self.Show(4,u"定频",dictIQFreq)
 
@@ -206,14 +211,14 @@ class ReceiveQueryThread(threading.Thread):
 
         Time=recvQueryData.TimeSet
         dictIQPara={
-        u"数据率(MHz)": DataRate,
-        u"数据块个数": recvQueryData.UploadNum,
-        u"年": Time.HighYear*256+Time.LowYear,
-        u"月":Time.Month,
-        u"日":Time.Day,
-        u"时":Time.HighHour*256+Time.LowHour,
-        u"分":Time.Minute,
-        u"秒":Time.Second
+        u"数据率(MHz)": str(DataRate),
+        u"数据块个数": str(recvQueryData.UploadNum),
+        u"年": str((Time.HighYear<<4)+Time.LowYear),
+        u"月":str(Time.Month),
+        u"日":str(Time.Day),
+        u"时":str((Time.HighHour<<2)+Time.LowHour),
+        u"分":str(Time.Minute),
+        u"秒":str(Time.Second)
         }
         self.Show(8,u"定频",dictIQPara)
 
@@ -222,13 +227,13 @@ class ReceiveQueryThread(threading.Thread):
         FreqArray=recvQueryData.FreqArray
         Freq=[0,0]
         for i in range(2):
-            Freq[i]=FreqArray[i].HighFreqInteger*256+FreqArray[i].LowFreqInteger   \
-             +float(FreqArray[i].HighFreqFraction*256+FreqArray[i].LowFreqFraction)/2**10
+            Freq[i]=(FreqArray[i].HighFreqInteger<<6)+FreqArray[i].LowFreqInteger   \
+             +float((FreqArray[i].HighFreqFraction<<8)+FreqArray[i].LowFreqFraction)/2**10
           
         dictPressFreq={
-        u"定频频点个数":recvQueryData.PressNum,
-        u"频率值1(Mhz)": Freq[0],
-        u"频率值2(Mhz)": Freq[1]
+        u"定频频点个数":str(recvQueryData.PressNum),
+        u"频率值1(Mhz)": str(Freq[0]),
+        u"频率值2(Mhz)": str(Freq[1])
         }
         self.Show(3,u"压制",dictPressFreq)
 
@@ -236,10 +241,10 @@ class ReceiveQueryThread(threading.Thread):
         PressMode=recvQueryData.PressMode
         PressSignal=recvQueryData.PressSignal
         
-        T1=recvQueryData.HighT1*256+recvQueryData.LowT1
-        T2=recvQueryData.HighT2*256+recvQueryData.LowT2
-        T3=recvQueryData.HighT3*256+recvQueryData.LowT3
-        T4=recvQueryData.HighT4*256+recvQueryData.LowT4
+        T1=(recvQueryData.HighT1<<8)+recvQueryData.LowT1
+        T2=(recvQueryData.HighT2<<8)+recvQueryData.LowT2
+        T3=(recvQueryData.HighT3<<8)+recvQueryData.LowT3
+        T4=(recvQueryData.HighT4<<8)+recvQueryData.LowT4
 
         mapPressMode={1:u"单频点自动",2:u"单频点手动",3:u"双频点自动",4:u"双频点手动",5:u"不压制"}
         mapPressSignal={1:u"单频正弦" ,2:u"等幅多频" ,3:u"噪声低频",4:u"DRM信号"}
@@ -250,22 +255,22 @@ class ReceiveQueryThread(threading.Thread):
         dictPressPara={
         u"压制模式":Mode,
         u"信号类型":Signal,
-        u"T1":T1,
-        u"T2":T2,
-        u"T3":T3,
-        u"T4":T4
+        u"T1":str(T1),
+        u"T2":str(T2),
+        u"T3":str(T3),
+        u"T4":str(T4)
         }
         self.Show(6,u"压制",dictPressPara)
 
     def ShowRecvGain(self,recvQueryData):
-        recvGain=recvQueryData.recvGain-3
+        recvGain=recvQueryData.RecvGain-3
         self.SpecFrame.panelQuery.SetStringItem(0,1,u"接收增益(dB)")
-        self.SpecFrame.panelQuery.SetStringItem(0,2,recvGain)
+        self.SpecFrame.panelQuery.SetStringItem(0,2,str(recvGain))
 
     def ShowSendWeak(self,recvQueryData):
         sendWeak=recvQueryData.SendWeak 
         self.SpecFrame.panelQuery.SetStringItem(0,1,u"发射衰减(dB)")
-        self.SpecFrame.panelQuery.SetStringItem(0,2,sendWeak)
+        self.SpecFrame.panelQuery.SetStringItem(0,2,str(sendWeak))
     def ShowTestGate(self,recvQueryData):
         mapAdapt={
         0:3,1:10,2:20,3:25,4:30,5:40
@@ -273,22 +278,24 @@ class ReceiveQueryThread(threading.Thread):
         if(recvQueryData.ThresMode==0):
             AdaptThres=mapAdapt[recvQueryData.AdaptThres]
             self.SpecFrame.panelQuery.SetStringItem(0,1,u"自适应门限")
-            self.SpecFrame.panelQuery.SetStringItem(0,2,AdaptThres)
+            self.SpecFrame.panelQuery.SetStringItem(0,2,str(AdaptThres))
 
         else:
-            FixedThres=recvQueryData.HighFixedThres*256+recvQueryData.LowFixedThres
+            FixedThres=(recvQueryData.HighFixedThres<<8)+recvQueryData.LowFixedThres
             self.SpecFrame.panelQuery.SetStringItem(0,1,u"固定门限")
-            self.SpecFrame.panelQuery.SetStringItem(0,2,FixedThres)
+            self.SpecFrame.panelQuery.SetStringItem(0,2,str(FixedThres))
 
     def ShowIsConnect(self,recvQueryData):
         if(recvQueryData.IsConnect==0x0F):
             IsConnect=u"在网"
+        else:
+            IsConnect=u"不在网"
         mapTerminalType={0:u"专业用户终端",1:u"普通用户终端",2:u"专业查询终端",3:u"普通查询终端"}
         TerminalType=mapTerminalType[recvQueryData.TerminalType]
         LonLatClass=recvQueryData.LonLatAlti
-        Lon=LonLatClass.LonInteger+float(LonLatClass.HighLonFraction*256+LonLatClass.LowLonFraction)/2**10
-        Lat=LonLatClass.LatInteger+float(LonLatClass.HighLatFraction*256+LonLatClass.LowLatFraction)/2**10
-        Altitude=LonLatClass.HighAltitude*256+LonLatClass.LowAltitude
+        Lon=LonLatClass.LonInteger+float((LonLatClass.HighLonFraction<<8)+LonLatClass.LowLonFraction)/2**10
+        Lat=LonLatClass.LatInteger+float((LonLatClass.HighLatFraction<<8)+LonLatClass.LowLatFraction)/2**10
+        Altitude=(LonLatClass.HighAltitude<<8)+LonLatClass.LowAltitude
 
         if(LonLatClass.LonFlag==0):
             LonFlag=u"东经"
@@ -307,11 +314,11 @@ class ReceiveQueryThread(threading.Thread):
         u"在网标志":IsConnect,
         u"终端类型":TerminalType,
         u"经度标志":LonFlag,
-        u"经度":Lon,
+        u"经度":str(Lon),
         u"纬度标志":LatFlag,
-        u"纬度":Lat,
+        u"纬度":str(Lat),
         u"高度标志":AltitudeFlag,
-        u"高度":Altitude
+        u"高度":str(Altitude)
         }
         self.Show(8,u"终端状态",dictIsConnect)
 
@@ -338,58 +345,65 @@ class ReceiveQueryThread(threading.Thread):
 
 ################FFT画图和异常频点显示线程#####################
 class DrawSpecAbListThread(threading.Thread):
-    def __init__(self,SpecFrame):
+    def __init__(self,SpecFrame,WaterFrame):
         threading.Thread.__init__(self)
         self.event = threading.Event()
         self.event.set()
         self.SpecFrame=SpecFrame
+        self.WaterFrame=WaterFrame
+        self.SpecFrame.panelFigure.setSpLabel( begin_X=70e6,intv=300e6, end_X=5995e6)
     def stop(self):
+        
         self.event.clear()
     def run(self):
         while(1):
             self.event.wait()
-            try:
-                MutexqueueFFT.acquire()
-                if(queueFFT):
-                    FFTList=[]
-                    FFTObj=queueFFT[0]
-                    del queueFFT[0]
-                    MutexqueueFFT.release()
-
-                    SweepTotalSection=FFTObj.SweepSectionTotalNum
-                    CurSectionNo=FFTObj.CurSectionNo
-                    AllFreq=FFTObj.AllFreq
-                    for FFTData in AllFreq:
-                        HighFreq1=FFTData.HighFreq1dB
-                        LowFreq1=FFTData.LowFreq1dB
-                        HighFreq2=FFTData.HighFreq2dB
-                        LowFreq2=FFTData.LowFreq2dB
-                        if(HighFreq1<0):
-                            FFTFreq1=(-1)*(abs(HighFreq1)*256+LowFreq1)
-                        else:
-                            FFTFreq1=HighFreq1*256+LowFreq1
-                        if(HighFreq2<0):
-                            FFTFreq2=(-1)*(abs(HighFreq2)*256+LowFreq2)
-                        else:
-                            FFTFreq2=HighFreq2*256+LowFreq2
-                        FFTList.append(FFTFreq1)
-                        FFTList.append(FFTFreq2)
-                    try:
-                        self.SpecFrame.panelFigure.PowerSpectrum(FFTList)
-                    except wx.PyDeadObjectError:
-                        pass     
-            except:
-                print u'FFT画图出错'
-            try:
-                MutexqueueAbList.acquire()
-                if(queueAbList):
-                    recvAbList=queueAbList[0]
-                    del queueAbList[0]
-                    MutexqueueAbList.release() 
+            print "FFT画图和异常频点显示线程"
+            FFTObj=0
+            if(not queueFFT.empty()):
+                FFTObj=queueFFT.get()
+            if(not FFTObj==0):
+                FFTList=[]
+                AllFreq1=FFTObj.AllFreq
+                for FFTData in AllFreq1:
+                    HighFreq1=FFTData.HighFreq1dB
+                    LowFreq1=FFTData.LowFreq1dB
+                    HighFreq2=FFTData.HighFreq2dB
+                    LowFreq2=FFTData.LowFreq2dB
+                    if(HighFreq1>=8):
+                        FFTFreq1=(HighFreq1<<8)+LowFreq1-2**12
+                    else:
+                        FFTFreq1=(HighFreq1<<8)+LowFreq1
+                    if(HighFreq2>=8):
+                        FFTFreq2=(HighFreq2<<8)+LowFreq2-2**12
+                    else:
+                        FFTFreq2=(HighFreq2<<8)+LowFreq2
+                    FFTList.append(FFTFreq1)
+                    FFTList.append(FFTFreq2)
                     
+                
+                print " specObj.SweepRecvMode",FFTObj.SweepRecvMode
+                print "specObj.FileUploadMode",FFTObj.FileUploadMode
+                print  "specObj.SpecChangeFlag",FFTObj.SpecChangeFlag
+                print "specObj.SweepSectionTotalNum",FFTObj.SweepSectionTotalNum
+                print "specObj.CurSectionNo", FFTObj.CurSectionNo
+                print "length -->" ,len(FFTList)
+                
+                curSectionNo=FFTObj.CurSectionNo
+                self.SpecFrame.panelFigure.PowerSpectrum(FFTList,FFTObj.CommonHeader.FunctionPara,curSectionNo)
+                if(self.WaterFrame):
+                    self.WaterFrame.WaterFall(FFTList)
+                       
+            try:
+                recvAbList=0
+                if(not queueAbList.empty()):
+                    recvAbList=queueAbList.get()
+             
+                if(not recvAbList==0):    
                     self.ShowAb(recvAbList)
             except:
                 print u"异常频点绘制出错"
+          
 
     def ShowAb(self,recvAbList):
         AllAbFreq=recvAbList.AllAbFreq
@@ -400,21 +414,22 @@ class DrawSpecAbListThread(threading.Thread):
             LowFreqNo=AbFreq.LowFreqNo
             HighdB=AbFreq.HighdB
             LowdB=AbFreq.LowdB
-            if(HighFreqNo<0):
-                FreqNo=(-1)*(abs(HighFreqNo)*256+LowFreqNo)
+            if(HighFreqNo>=8):
+                FreqNo=(HighFreqNo<<8)+LowFreqNo-2**12
             else:
-                FreqNo=HighFreqNo*256+LowFreqNo
+                FreqNo=(HighFreqNo<<8)+LowFreqNo
 
             Freq=82.5+25*(CurSectionNo-1)+float(25e6)/1024*FreqNo
-            if(HighdB<0):
-                dB=(-1)*(abs(HighdB)*256+LowdB)
+            if(HighdB>=8):
+                dB=(HighdB<<8)+LowdB-2**12
             else:
-                dB=HighdB*256+LowdB
-            self.SpecFrame.panelQuery.SetStringItem(i,1,Freq)
-            self.SpecFrame.panelQuery.SetStringItem(i,2,dB)
+                dB=(HighdB<<8)+LowdB
+            self.SpecFrame.panelQuery.SetStringItem(i,1,str('%0.2f'%Freq))
+            self.SpecFrame.panelQuery.SetStringItem(i,2,str(dB))
             i=i+1
 
 ################本地功率谱存文件线程 ##############################
+'''
 class LocalSaveThread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -468,7 +483,7 @@ class LocalSaveThread(threading.Thread):
         fid=open(".\LocalData\\"+ fileName,'w')
         for x in head.bytes:
             fid.write(str(x)+'\n')
-        for i in xrange(len(SpecList)/2):
+        for i in xrange(len(SpecList)/2):   
             blockFFT=SpecList[2*i]
             for x in blockFFT.bytes:
                 fid.write(str(x)+'\n')
@@ -479,135 +494,77 @@ class LocalSaveThread(threading.Thread):
                 fid.write(str(x)+'\n')
         fid.write('0\n')
         fid.close()
-
 '''
-##############本地IQ波形文件存储#################################
-#class LocalSaveThread()
-
-############中心站响应数据接收##################################
-class ReceiveServerData(threading.Thread):
-    def __init__(self,specFrame,sock):
+##############直接上传接受到的功率谱数据或者IQ数据####################
+class UpLoadSpecThread(threading.Thread):
+    def __init__(self,serveCom,extractM):
         threading.Thread.__init__(self)
         self.event = threading.Event()
         self.event.set()
-        self.sock=sock
-        self.specFrame=specFrame
+        self.serveCom=serveCom
+        self.extractM=extractM
+        self.SpecList=[]
+        self.IQList=[]
     def stop(self):
         self.event.clear()
     def run(self):
         while(1):
-            
             self.event.wait()
-            frameLen=self.sock.recv(8)
-            dataLen=[]
-            ListData=[]
-            for i in frameLen:
-                dataLen.append(ord(i))
-              
-            dataLength=(dataLen[0]<<56)+(dataLen[1]<<48)+(dataLen[2]<<40)+ \
-            (dataLen[3]<<32)+(dataLen[4]<<24)+(dataLen[5]<<16)+(dataLen[6]<<8)+dataLen[7]  
-            frameData=self.sock.recv(dataLength)
-            print 'dataLength',dataLength
-            for i in frameData:
-                ListData.append(ord(i))
-            
-            frameFlag=ListData[1]
-            if(frameFlag==176):
-                self.ReadConnectResponse(ListData)
-            elif(frameFlag==177):
-                self.ReadElecTrendResponse(ListData)
-            elif(frameFlag==178):
-                self.ReadElecPathResponse(ListData)
-            elif(frameFlag==179):
-                self.ReadAbFreqResponse(ListData)
-            elif(frameFlag==181):
-                self.ReadStationProResponse(ListData)
-            elif(frameFlag==182):
-                self.ReadStationCurProResponse(ListData)
-            elif(frameFlag==183):
-                List=[(0,u"起始频率（Mhz）"),(1,u"终止频率（Mhz）"),(2,u"业务类型 1")]
-                for i in range(3):
-                    col = self.specFrame.panelQuery.GetColumn(i)
-                    col.SetText(List[i][1])
-                    self.specFrame.panelQuery.SetColumn(i, col)
-                self.ReadFreqPlanResponse(ListData)
-                
-                for i in range(7):
-                    self.specFrame.panelQuery.InsertColumn(i+3,u"业务类型"+str(i))
-                    self.specFrame.panelQuery.SetColumnWidth(100)
-            else:
-                print 'frameFlag  Error'
-           
-    def ReadConnectResponse(self,ListData):
-        pass
-    def ReadElecTrendResponse(self,ListData):
-        pass
-    def ReadElecPathResponse(self,ListData):
-        pass
-    def ReadAbFreqResponse(self,ListData):
-        pass
-    def ReadStationProResponse(self,ListData):
-        pass
-    def ReadStationCurProResponse(self,ListData):
-        pass
-    def ReadFreqPlanResponse(self,ListData):
-        i=4
-        count=0
-        lenData=len(ListData)
-        while(i<lenData-3):
-            startHigh4bit=(ListData[i+2])>>4
-            startLow4bit=ListData[i+2]&0x0F
-            endHigh4bit=ListData[i+6]>>4
-            endLow4bit=ListData[i+6]&0x0F
-            startFreqInteger=(ListData[i]<<12)+(ListData[i+1]<<4)+startHigh4bit
-            startFreqFraction=float((startLow4bit<<8)+ListData[i+3])/2**12
-            endFreqInteger=(ListData[i+4]<<12)+(ListData[i+5]<<4)+endHigh4bit
-            endFreqFraction=float((endLow4bit<<8)+ListData[i+7])/2**12
-            
-            startFreq=startFreqInteger+startFreqFraction
-            endFreq=endFreqInteger+endFreqFraction
-            j=i+8
-            freqPro=[]
-            r=0
-            while(r<8 and ListData[j]):
-                freqPro.append(ListData[j])
-                r=r+1
-                j=j+1
-            
-            self.specFrame.panelQuery.SetStringItem(count,0,str('%0.5f'%startFreq))
-            self.specFrame.panelQuery.SetStringItem(count,1,str('%0.5f'%endFreq))
-            for k in xrange(len(freqPro)):
-                self.specFrame.panelQuery.SetStringItem(count,k+2,dictFreqPlan[freqPro[k]])
-            count=count+1
-            i=i+16
-            
-            while(count<1000):
-                self.specFrame.panelQuery.SetStringItem(count,0,'')
-                self.specFrame.panelQuery.SetStringItem(count,1,'')
-                self.specFrame.panelQuery.SetStringItem(count,2,'')
-                count=count+1
-        
-'''
+            self.SendSpec()
+            self.SendIQ()
+            time.sleep(0.5)
     
-class PopFrame(wx.MDIChildFrame):
-    def __init__(self,parent,name):
-        wx.MDIChildFrame.__init__(self,parent,-1,name,size=(500,600))
-        pane=wx.Panel(self,-1)
-        self.list = wx.ListCtrl(pane,-1,style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES)
-        self.list.InsertColumn(0, "StartFreq(Mhz)")
-        self.list.InsertColumn(1, 'EndFreq(Mhz)')
-        self.list.InsertColumn(2, 'Type')
-        self.list.SetColumnWidth(0,120)
-        self.list.SetColumnWidth(1, 120)
-        self.list.SetColumnWidth(2, 120)
-        for i in range(1,100):
-            self.list.InsertStringItem(i-1,str(i))
-        self.list.Fit()
-          
-'''
-
-
+    def SendSpec(self):
+        while(not queueSpecUpload.empty()):
+            recvFFT=queueSpecUpload.get()
+            recvAbList=queueSpecUpload.get()
+            changeFlag=recvFFT.SpecChangeFlag
+            TotalNum=recvFFT.SweepSectionTotalNum
+            if(changeFlag==15):
+                ChangeThres=3  #10dB
+            elif(changeFlag==14):
+                ChangeThres=2  #20dB
+            ###ExtractM 为从设置中得到的参数###############
+            blockFFT=FFTBlock(recvFFT.CurSectionNo,recvFFT.AllFreq)
+            blockAb=AbListBlock(recvAbList.CurSectionNo,recvAbList.AbFreqNum,recvAbList.AllAbFreq)
+            self.SpecList.append(blockFFT)
+            self.SpecList.append(blockAb)
+            if(len(self.SpecList)==TotalNum*2):   ###扫频范围的数据
+                head=SpecUploadHeader(0x00,recvFFT.LonLatAlti,recvFFT.SweepRecvMode, \
+                recvFFT.FileUploadMode,ChangeThres,self.extractM,TotalNum)
+                
+                self.serveCom.sock.send(bytearray(head))
+                for i in xrange(len(self.SpecList)/2):
+                    self.serveCom.sock.send(bytearray(self.SpecList[2*i]))
+                self.serveCom.sock.send(0xFF)
+                for i in xrange(len(self.SpecList)/2):
+                    self.serveCom.sock.send(bytearray(self.SpecList[2*i+1])) 
+                self.serveCom.sock.send(0x00)
+                self.SpecList=[]
+                
+    def SendIQ(self):
+        while(not queueIQUpload.empty()):
+            recvIQ=queueIQUpload.get()
+            block=IQBlock(recvIQ.CurBlockNo,recvIQ.IQDataAmp)
+            self.IQList.append(block)
+            if(len(self.IQList)==recvIQ.Param.UploadNum):
+                head=IQUploadHeader(0x00,recvIQ.LonLatAlti,recvIQ.Param)
+                self.serveCom.sock.send(head)
+                for data in self.IQList:
+                    self.serveCom.sock.send(bytearray(data))
+                self.serveCom.sock.send(0x00)
+                self.IQList=[]
+    
+    
             
+            
+            
+        
+        
+                
+        
+        
+        
 
 
 

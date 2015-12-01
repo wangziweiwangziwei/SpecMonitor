@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from ctypes import *
+from collections import _field_template
 
 class FrameHeader(BigEndianStructure):
     _fields_=[("Header",c_ubyte),
@@ -217,8 +218,8 @@ class IsConnectResponse(BigEndianStructure):
 
 ##############功率谱数据帧####################
 class TwoFreq(BigEndianStructure):
-    _fields_=[("HighFreq1dB",c_int8,4),
-              ("HighFreq2dB",c_int8,4),
+    _fields_=[("HighFreq1dB",c_uint8,4),
+              ("HighFreq2dB",c_uint8,4),
               ("LowFreq1dB",c_uint8),
               ("LowFreq2dB",c_uint8)
                 ]
@@ -240,8 +241,8 @@ class SpecDataRecv(BigEndianStructure):
 
 ##############异常频点数据帧###################
 class AbFreq(BigEndianStructure):
-    _fields_=[("HighFreqNo",c_int8,4),
-              ("HighdB",c_int8,4),
+    _fields_=[("HighFreqNo",c_uint8,4),
+              ("HighdB",c_uint8,4),
               ("LowFreqNo",c_uint8),
               ("LowdB",c_uint8)
               ]
@@ -258,8 +259,8 @@ class AbFreqRecv(BigEndianStructure):
 
 ##############IQ波形数据帧######################
 class FreqIQ(BigEndianStructure):
-    _fields_=[("HighIPath",c_int8,4),
-              ("HighQPath",c_int8,4),
+    _fields_=[("HighIPath",c_uint8,4),
+              ("HighQPath",c_uint8,4),
               ("LowIPath",c_uint8),
               ("LowQPath",c_uint8)]
 
@@ -286,11 +287,11 @@ class IQData(BigEndianStructure):
 ##############文件上传##########################
 
 ##############功率谱文件上传########################
-class FFTBlock(Union):
+class FFTBlock(BigEndianStructure):
     _fields_=[("CurSectionNo",c_uint8),
               ("AllFreq",TwoFreq*512)
              ]
-class SpecUploadHeader(Union):
+class SpecUploadHeader(BigEndianStructure):
     _fields_=[("Header",c_uint8),
               ("LonLatAlti",LonLatAltitude),
               ("SweepRecvMode",c_uint8,6),
@@ -300,20 +301,20 @@ class SpecUploadHeader(Union):
               ("SweepSectionTotalNum",c_uint8)
               ]
 
-class AbListBlock(Union):
+class AbListBlock(BigEndianStructure):
     _fields_=[("CurSectionNo",c_uint8),
                ("AbFreqNum",c_uint8),
                ("AllAbFreq",AbFreq*10)
     ]
 
 ##############IQ波形文件上传#########################
-class IQUploadHeader(Union):
+class IQUploadHeader(BigEndianStructure):
     _fields_=[("Header",c_uint8),
               ("LonLatAlti",LonLatAltitude),
               ("Param",IQDataPartHead)
               ]
 
-class IQBlock(Union):
+class IQBlock(BigEndianStructure):
     _fields_=[("CurBlockNo",c_uint8),
               ("IQDataAmp",FreqIQ*2000)
  ]        
@@ -338,7 +339,72 @@ class ConnectResponse(BigEndianStructure):
               ("CommonTail",FrameTail)
               ]
 
+class Time(BigEndianStructure):
+    _fields_=[("HighYear",c_uint8),
+              ("LowYear",c_uint8,4),
+              ("Month",c_uint8,4),
+              ("Day",c_uint8,5),
+              ("HighHour",c_uint8,3),
+              ("Minute",c_uint8,6),
+              ("LowHour",c_uint8,2)
+              ]           
+              
+###########电磁分布态势 路径 异常频点定位 请求#################
+class ReqElecTrend(BigEndianStructure):
+    _field_=[("CommonHeader",FrameHeader),
+             ("HighCentreFreq",c_uint8),
+             ("LowCentreFreq",c_uint8),
+             ("BandWidth",c_uint8),
+             ("Radius",c_uint8),
+             ("FenBianLvInteger",c_uint8,5),
+             ("FenBianLvFraction",c_uint8,3),
+             ("RefreshIntv",c_uint8),
+             ("StartTime",Time),
+             ("EndTime",Time),
+             ("CommonTail",FrameTail)
+             ]
 
+class ReqElecPath(BigEndianStructure):
+    _field_=[("CommonHeader",FrameHeader),
+             ("DataSource",c_uint8,4),
+             ("Display",c_uint8,4),
+             ("HighCentreFreq",c_uint8),
+             ("LowCentreFreq",c_uint8),
+             ("BandWidth",c_uint8),
+             ("StartTime",Time),
+             ("EndTime",Time),
+             ("CommonTail",FrameTail)
+             ]
+
+class ReqAbFreq(BigEndianStructure):
+    _field_=[("CommonHeader",FrameHeader),
+             ("LocateWay",c_uint8),
+             ("Param",IQDataPartHead),
+             ("Time",TimeSet),
+             ("CommonTail",FrameTail)
+             ]
+
+
+###########台站属性##################
+
+class QueryStationPro(BigEndianStructure):
+    _field_=[("CommonHeader",FrameHeader),
+             ("HighFreqStart",c_uint8),
+             ("LowFreqStart",c_uint8),
+             ("HighFreqEnd",c_uint8),
+             ("LowFreqEnd",c_uint8),
+             ("CommonTail",c_uint8)
+             ]
+
+
+
+class QueryCurStationPro(BigEndianStructure):
+    _field_=[("CommonHeader",FrameHeader),
+             ("Identifier_h",c_uint8),
+             ("Identifier_m",c_uint8),
+             ("Identifier_l",c_uint8),
+             ("CommonTail",FrameTail)     
+             ]
 
 
 #########无线频率规划查询请求#################
@@ -351,6 +417,16 @@ class QueryFreqPlan(BigEndianStructure):
                   ("FreqEndMid",c_uint8),
               ("FreqEndLow",c_uint8),
               ("CommonTail",FrameTail)
+             ]
+
+################请求指定的IQ数据和功率谱数据######
+class ReqData(BigEndianStructure):
+    _field_=[("CommonHeader",FrameHeader),
+             ("ApointID_l",c_uint8),
+             ("ApointID_h",c_uint8),
+             ("StartTime",c_uint8),
+             ("EndTime",c_uint8),
+             ("CommonTail",FrameTail)
              ]
 
 

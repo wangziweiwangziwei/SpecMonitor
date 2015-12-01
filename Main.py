@@ -14,6 +14,7 @@ import AllDialog
 from HardwareAccess import *
 from Package import *
 from MyThread import *
+from ThreadStation import *
 import usb
 import time
 
@@ -55,9 +56,11 @@ class MainWindow(wx.MDIParentFrame):
         global specShow
         specShow=True
         self.Bind(wx.EVT_WINDOW_DESTROY,self.OnCloseSpecFrame,self.SpecFrame)
+        ###############创建与中心站通信的对象##############
 
         self.serverCom=ServerCommunication()
         
+        self.recvHardObj=0 
         #################硬件端口定义##############
         self.inPointFFT=0
         self.inPointIQ=0
@@ -69,6 +72,16 @@ class MainWindow(wx.MDIParentFrame):
         
         ###############编码表##############
         self.dictThres={3:0x00,10:0x01,20:0x02,25:0x03,30:0x04,40:0x05}
+        self.ListFreq={0:(98,20),1:(947.5,25),2:(1842.5,75),3:(875,10),4:(1890,20),5:(2345,50), \
+                       6:(2605,60),7:(2137.5,15),8:(2310,20),9:(2565,20),10:(2117.5,15),11:(2380,20),  \
+                       12:(2645,20),13:(1865,30),14:(2157.5,25),15:(433.92,1.74),16:(915,26),  \
+                       17:(2451.75,63.5),18:(5787.5,125)}
+
+        
+        ##############由于要传递WaveFrame,WaterFrame对象给线程,窗口一打开就传递进去#############
+        self.threadRecv_drawIQ=0
+        self.threadRecv_drawFFT=0            
+        
     def OnCloseSpecFrame(self,event):
         self.SpecFrame=None
         global specShow
@@ -306,6 +319,26 @@ class MainWindow(wx.MDIParentFrame):
         
         print 'usb transfer open'
         
+        #########创建与硬件通信的对象################
+        self.recvHardObj=RecvHardwaveData(self.inPointFFT,self.inPointIQ,self.inPointAb)
+        
+        ##########开启与硬件通信的线程##################
+        
+        thread=ReceiveFFTThread(self.recvHardObj)
+        thread.start()
+        
+    
+        thread=ReceiveQueryThread(self.SpecFrame)
+        thread.start()
+        
+        self.threadRecv_drawIQ=ReceiveIQThread(self.recvHardObj,self.WaveFrame)
+        self.threadRecv_drawIQ.start()
+      
+        
+        self.threadRecv_drawFFT=DrawSpecAbListThread(self.SpecFrame,self.WaterFrame)
+        self.threadRecv_drawFFT.start()
+        
+        
     def OnCloseTransfer(self,event):
         transfer=TransferSet()
         transfer.CommonHeader=FrameHeader(0x55,0x0B,0x0F,0)
@@ -337,6 +370,8 @@ class MainWindow(wx.MDIParentFrame):
             gainSet.RecvGain=Gain+3
             gainSet.CommonTail=self.tail
             self.outPoint.write(bytearray(gainSet))
+            for i in bytearray(gainSet):
+                print 'array   '+str(i)
         dlg.Destroy()
         
             
@@ -345,12 +380,15 @@ class MainWindow(wx.MDIParentFrame):
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
             Weak=int(dlg.sliderWeak.GetValue())
+            print Weak
             header=FrameHeader(0x55,0x05,0x0F,0x00)
             SendWeak=SendWeakSet()
             SendWeak.CommonHeader=header
-            SendWeak.RecvGain=Weak
+            SendWeak.SendWeak=Weak
             SendWeak.CommonTail=self.tail
             self.outPoint.write(bytearray(SendWeak))
+            for i in bytearray(SendWeak):
+                print 'array   '+str(i)
         dlg.Destroy()
         
     def OnSetThres(self,event):
@@ -367,12 +405,15 @@ class MainWindow(wx.MDIParentFrame):
             else:    
                 thresSet.HighFixedThres=thres>>8
                 thresSet.LowFixedThres=thres& 0x00FF    
-                
+            
             header=FrameHeader(0x55,0x06,0x0F,0x00)
             thresSet.CommonHeader=header 
             thresSet.ThresMode=thresMode            
             thresSet.CommonTail=self.tail
+            for i in bytearray(thresSet):
+                print 'array   '+str(i)
             self.outPoint.write(bytearray(thresSet))
+            
         dlg.Destroy()
     
     def OnSetPressPara(self,event):
@@ -425,7 +466,10 @@ class MainWindow(wx.MDIParentFrame):
                 pressSet.HighT4=twoFreqT4>>8
                 pressSet.LowT4=twoFreqT4&0x00FF 
             pressSet.CommonTail=self.tail
+            for i in bytearray(pressSet):
+                print 'array   '+str(i) 
             self.outPoint.write(bytearray(pressSet))
+             
         dlg.Destroy()
             
         
@@ -439,8 +483,11 @@ class MainWindow(wx.MDIParentFrame):
             pressFreqSet.CommonHeader=FrameHeader(0x55,0x03,0x0F,0)
             pressFreqSet.CommonTail=self.tail
             pressFreqSet.PressNum=1
-            pressFreqSet.FreqArray[0]=CentreFreq(array[0],array[1],array[2],array[3])    
+            pressFreqSet.FreqArray[0]=CentreFreq(array[0],array[1],array[2],array[3])
+            for i in bytearray(pressFreqSet):
+                print 'array   '+str(i)
             self.outPoint.write(bytearray(pressFreqSet))
+             
         dlg.Destroy()
         
     def FreqToByte(self,freq):
@@ -468,8 +515,11 @@ class MainWindow(wx.MDIParentFrame):
             pressFreqSet.CommonTail=self.tail
             pressFreqSet.PressNum=2
             pressFreqSet.FreqArray[0]=CentreFreq(array1[0],array1[1],array1[2],array1[3])    
-            pressFreqSet.FreqArray[1]=CentreFreq(array2[0],array2[1],array2[2],array2[3])    
+            pressFreqSet.FreqArray[1]=CentreFreq(array2[0],array2[1],array2[2],array2[3])
+            for i in bytearray(pressFreqSet):
+                print 'array   '+str(i) 
             self.outPoint.write(bytearray(pressFreqSet))
+           
         dlg.Destroy()
             
 
@@ -489,7 +539,14 @@ class MainWindow(wx.MDIParentFrame):
                 sweepRangeSet.ChangeThres=int(dlg.ChangeThres.GetValue())
             else:
                 sweepRangeSet.FileUploadMode=1
+            for i in bytearray(sweepRangeSet):
+                print 'array   '+str(i) 
+            '''
             self.outPoint.write(bytearray(sweepRangeSet))
+            '''
+            self.SpecFrame.panelFigure.setSpLabel(begin_X=70e6,intv=200e6,end_X=5995e6)
+            self.SpecFrame.panelFigure.xlim(70e6,5995e6)
+            print '***********************'
         dlg.Destroy()
            
 
@@ -514,7 +571,8 @@ class MainWindow(wx.MDIParentFrame):
             array=self.SweepSection(freqStart, freqEnd)
             sweepRangeSet=self.FillSweepRange(sweepRangeSet, array)
             self.outPoint.write(bytearray(sweepRangeSet))
-            
+            self.SpecFrame.panelFigure.setSpLabel(intv=5e6)
+            self.SpecFrame.panelFigure.xlim(70e6+array[0]*25e6,70e6+(array[1]+1)*25e6)
         dlg.Destroy()
     def FillSweepRange(self,sweepRangeSet,array):
         sweepRangeSet.StartSectionNo=array[0]
@@ -573,7 +631,12 @@ class MainWindow(wx.MDIParentFrame):
                     freqEnd=int(listFreq[i][1])
                     array=self.SweepSection(freqStart, freqEnd)
                     sweepRangeSet=self.FillSweepRange(sweepRangeSet, array)
-                    self.outPoint.write(bytearray(sweepRangeSet))                      
+                    for i in bytearray(sweepRangeSet):
+                        print 'array   '+str(i) 
+             
+                    self.outPoint.write(bytearray(sweepRangeSet))
+                    
+            
         dlg.Destroy()        
             
                             
@@ -599,13 +662,16 @@ class MainWindow(wx.MDIParentFrame):
             Second=int(curTime[12:14])+delayTime
             iqPara.DataDate.HighYear=Year>>4
             iqPara.DataDate.LowYear=Year&0x00F
-            iqPara.Month=Month
-            iqPara.Day=Day
-            iqPara.HighHour=Hour>>2
-            iqPara.LowHour=Hour&0x03
-            iqPara.Minute=Min
-            iqPara.Second=Second
+            iqPara.DataDate.Month=Month
+            iqPara.DataDate.Day=Day
+            iqPara.DataDate.HighHour=Hour>>2
+            iqPara.DataDate.LowHour=Hour&0x03
+            iqPara.DataDate.Minute=Min
+            iqPara.DataDate.Second=Second
+            for i in bytearray(iqPara):
+                print 'array   '+str(i) 
             self.outPoint.write(bytearray(iqPara))
+           
         dlg.Destroy()
     def OnSetIQFreq(self,event):
         dlg=AllDialog.IQFreqSetDialog()
@@ -627,7 +693,10 @@ class MainWindow(wx.MDIParentFrame):
                 array=self.FreqToByte(listFreq[i])
                 iqFreq.FreqArray[i]=CentreFreq(array[0],array[1],array[2],array[3])
             iqFreq.FreqNum=len(listFreq)
-            self.outPoint.write(bytearray(iqFreq))        
+            for i in bytearray(iqFreq):
+                print 'array   '+str(i) 
+            self.outPoint.write(bytearray(iqFreq))
+            
         dlg.Destroy()
         
 
@@ -683,19 +752,127 @@ class MainWindow(wx.MDIParentFrame):
         dlg=AllDialog.ReqElecTrendDialog()
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
-            pass
+            reqElec=ReqElecTrend()
+            reqElec.CommonHeader=FrameHeader(0x55,0xA2,0x0F,0)
+            reqElec.CommonTail=self.tail
+            if(dlg.radioChoose.GetValue()):
+                centreFreq=self.ListFreq[dlg.FreqSection.GetSelection()][0]
+                bandWidth=self.ListFreq[dlg.FreqSection.GetSelection()][1]
+            else:
+                centreFreq=int(dlg.CentreFreq.GetValue())
+                bandWidth=int(dlg.BandWidth.GetValue())
+            
+            reqElec.HighCentreFreq=centreFreq>>8
+            reqElec.HighCentreFreq=centreFreq&0x00FF
+            reqElec.BandWidth=bandWidth
+            reqElec.Raius=int(dlg.Radius.GetValue())
+            fenBianLv=float(dlg.Radius.GetValue())
+            startTime=(int(dlg.StartTimeYear.GetValue()),int(dlg.StartTimeMonth.GetValue()),  \
+                       int(dlg.StartTimeDay.GetValue()),int(dlg.StartTimeHour.GetValue()),    \
+                       int(dlg.StartTimeMinute.GetValue())
+                       )
+            endTime=(int(dlg.EndTimeYear.GetValue()),int(dlg.EndTimeMonth.GetValue()),  \
+                       int(dlg.EndTimeDay.GetValue()),int(dlg.EndTimeHour.GetValue()),    \
+                       int(dlg.EndTimeMinute.GetValue())
+                       )
+            
+            reqElec.FenBianLvInteger=int(fenBianLv)
+            reqElec.FenBianLvFraction=int((fenBianLv-int(fenBianLv))*8)
+            reqElec.RefreshIntv=int(dlg.RefreshIntv.GetValue())
+            reqElec.StartTime=self.ByteToTime(startTime)
+            reqElec.EndTime=self.ByteToTime(endTime)
+            frameLen=len(reqElec)
+            self.serverCom.SendQueryData(frameLen,reqElec)
         dlg.Destroy()
+
+    def ByteToTime(self,time):
+        Obj=Time()
+        Obj.HighYear=time[0]>>4
+        Obj.LowYear=time[0]&0x00F
+        Obj.Month=time[1]
+        Obj.Day=time[2]
+        Obj.HighHour=time[3]>>2
+        Obj.LowHour=time[3]&0x03
+        Obj.Minute=time[4]
+        
+        return Obj
+            
     def OnReqElecPath(self,event):
         dlg=AllDialog.ReqElecPathDialog()
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
-            pass
+            reqElec=ReqElecTrend()
+            reqElec.CommonHeader=FrameHeader(0x55,0xA3,0x0F,0)
+            reqElec.CommonTail=self.tail
+            if(dlg.radioBox1.GetSelection()):
+                reqElec.DataSource=15
+            elif(dlg.radioBox2.GetSelection()):
+                reqElec.Display=15
+            
+            if(dlg.radioBox3.GetSelection()==0):
+                centreFreq=self.ListFreq[dlg.FreqSection.GetSelection()][0]
+                bandWidth=self.ListFreq[dlg.FreqSection.GetSelection()][1]
+            else:
+                centreFreq=int(dlg.CentreFreq.GetValue())
+                bandWidth=int(dlg.BandWidth.GetValue())
+                
+            reqElec.HighCentreFreq=centreFreq>>8
+            reqElec.HighCentreFreq=centreFreq&0x00FF
+            reqElec.BandWidth=bandWidth
+
+            startTime=(int(dlg.StartTimeYear.GetValue()),int(dlg.StartTimeMonth.GetValue()),  \
+                       int(dlg.StartTimeDay.GetValue()),int(dlg.StartTimeHour.GetValue()),    \
+                       int(dlg.StartTimeMinute.GetValue())
+                       )
+            endTime=(int(dlg.EndTimeYear.GetValue()),int(dlg.EndTimeMonth.GetValue()),  \
+                       int(dlg.EndTimeDay.GetValue()),int(dlg.EndTimeHour.GetValue()),    \
+                       int(dlg.EndTimeMinute.GetValue())
+                       )
+            
+            reqElec.StartTime=self.ByteToTime(startTime)
+            reqElec.EndTime=self.ByteToTime(endTime)
+            
+            frameLen=len(reqElec)
+            self.serverCom.SendQueryData(frameLen,reqElec)
         dlg.Destroy()
     def OnReqAbFreq(self,event):
         dlg=AllDialog.ReqAbFreqDialog()
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
-            pass
+            reqAb=ReqAbFreq()
+            reqAb.CommonHeader=FrameHeader(0x55,0xA4,0x0F,0)
+            reqAb.CommonTail=self.tail
+            if(dlg.radioBox.GetSelection()):
+                reqAb.LocateWay=0x0F
+            centreFreq=float(dlg.CentreFreq.GetValue())  
+            bandWidth=int(dlg.BandWidth.GetSelection())+1  
+            centreFreq_I=int(centreFreq)
+            centreFreq_F=int((centreFreq-int(centreFreq))*2**10)
+            reqAb.Param.HighCentreFreqInteger=centreFreq_I>>6
+            reqAb.Param.LowCentreFreqInteger=centreFreq_I&0x003F
+            reqAb.Param.HighCentreFreqFraction=centreFreq_F>>8
+            reqAb.Param.LowCentreFreqFraction=centreFreq_F&0x0FF
+            reqAb.Param.UploadNum=int(dlg.UploadNum.GetValue())
+            reqAb.Param.DataRate=bandWidth
+            reqAb.Param.BandWidth=bandWidth
+            
+            startTime=(int(dlg.StartTimeYear.GetValue()),int(dlg.StartTimeMonth.GetValue()),  \
+                       int(dlg.StartTimeDay.GetValue()),int(dlg.StartTimeHour.GetValue()),    \
+                       int(dlg.StartTimeMinute.GetValue(),int(dlg.StartTimeSecond.GetValue()))
+                       )
+            
+           
+            reqAb.Time.HighYear=startTime[0]>>4
+            reqAb.Time.LowYear=startTime[0]&0x00F
+            reqAb.Time.Month=startTime[1]
+            reqAb.Time.Day=startTime[2]
+            reqAb.Time.HighHour=startTime[3]>>2
+            reqAb.Time.LowHour=startTime[3]&0x03
+            reqAb.Time.Minute=startTime[4]
+            reqAb.Time.Second=startTime[5]
+            frameLen=len(reqAb)
+            self.serverCom.SendQueryData(frameLen,reqAb)
+            
         dlg.Destroy()
         
 
@@ -705,28 +882,66 @@ class MainWindow(wx.MDIParentFrame):
         dlg=AllDialog.QueryStationProDialog()
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
-            pass
+            freqStart=int(dlg.FreqStart.GetValue())
+            freqEnd=int(dlg.FreqEnd.GetValue())
+            stationPro=QueryStationPro()
+            stationPro.CommonHeader=FrameHeader(0x55,0xA5,0x0F,0)
+            stationPro.CommonTail=self.tail
+            stationPro.HighFreqStart=freqStart>>8
+            stationPro.LowFreqStart=freqStart&0x00FF
+            stationPro.HighFreqEnd=freqEnd>>8
+            stationPro.LowFreqEnd=freqEnd&0x00FF
+            frameLen=len(stationPro)
+            self.serverCom.SendQueryData(frameLen,stationPro)
+            
         dlg.Destroy()
 
     def OnQueryCurStationPro(self,event):
         dlg=AllDialog.QueryCurStationProDialog()
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
-            pass
+            ID=int(dlg.StationID.GetValue())
+            curStationPro=QueryCurStationPro()
+            curStationPro.CommonHeader=FrameHeader(0x55,0xA6,0x0F,0)
+            curStationPro.CommonTail=self.tail
+            curStationPro.Identifier_h=ID>>16
+            curStationPro.Identifier_m=ID&0x00FF00
+            curStationPro.Identifier_l=ID&0x0000FF
+            frameLen=len(curStationPro)
+            self.serverCom.SendQueryData(frameLen,curStationPro)
+            
         dlg.Destroy()
 
     def OnQueryAllStationPro(self,event):
-        dlg=AllDialog.QueryAllStationProDialog()
+        dlg=AllDialog.QueryStationProDialog()
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
-            pass
+            freqStart=int(dlg.FreqStart.GetValue())
+            freqEnd=int(dlg.FreqEnd.GetValue())
+            stationPro=QueryStationPro()
+            stationPro.CommonHeader=FrameHeader(0x55,0xA8,0x0F,0)
+            stationPro.CommonTail=self.tail
+            stationPro.HighFreqStart=freqStart>>8
+            stationPro.LowFreqStart=freqStart&0x00FF
+            stationPro.HighFreqEnd=freqEnd>>8
+            stationPro.LowFreqEnd=freqEnd&0x00FF
+            frameLen=len(stationPro)
+            self.serverCom.SendQueryData(frameLen,stationPro)
+            
         dlg.Destroy()
     #############在网和全部终端属性以及无线电频率规划#########
 
     def OnQueryPortPro(self,event):
-        pass
+        query=Query()
+        query.CommonHeader=FrameHeader(0x55,0xA9,0x0F,0)
+        query.CommonTail=self.tail
+        self.serverCom.SendQueryData(len(query),query)  
+        
     def OnQueryAllPortPro(self,event):
-        pass
+        query=Query()
+        query.CommonHeader=FrameHeader(0x55,0xAA,0x0F,0)
+        query.CommonTail=self.tail
+        self.serverCom.SendQueryData(len(query),query)  
 
     def OnQueryFreqPlan(self,event):
         dlg=AllDialog.QueryFreqPlanDialog()
@@ -744,12 +959,17 @@ class MainWindow(wx.MDIParentFrame):
         lowFreqEnd=freqEnd&0x0000FF
         header=FrameHeader(0x55,0xA7,0x0F,0)
         
-        structObj=QueryFreqPlan(header,highFreqStart,midFreqStart,lowFreqStart,highFreqEnd,midFreqEnd,lowFreqEnd,self.tail)
-        #frameLen=sizeof(structObj)
-        frameLen=11
+        structObj=QueryFreqPlan(header,highFreqStart,midFreqStart,  \
+                                lowFreqStart,highFreqEnd,midFreqEnd,lowFreqEnd,self.tail)
+       
+        frameLen=len(structObj)
         self.serverCom.SendQueryData(frameLen,structObj)
 
-    ###########高级用户更改另一终端请求########################
+
+
+###########高级用户更改另一终端请求########################
+
+    
     def OnChangeAnotherSweep(self,event):
         dlg=AllDialog.ChangeAnotherSweep()
         result=dlg.ShowModal()
@@ -766,15 +986,40 @@ class MainWindow(wx.MDIParentFrame):
         dlg=AllDialog.SetSpecTimeDialog()
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
-            pass
+            self.HistoryDataQuery(dlg, 0xAB)
         dlg.Destroy()
+    
+    def HistoryDataQuery(self,dlg,functionPara):
+        Obj=ReqData()
+        
+        startTime=(int(dlg.StartTimeYear.GetValue()),int(dlg.StartTimeMonth.GetValue()),  \
+                   int(dlg.StartTimeDay.GetValue()),int(dlg.StartTimeHour.GetValue()),    \
+                   int(dlg.StartTimeMinute.GetValue())
+                   )
+        endTime=(int(dlg.EndTimeYear.GetValue()),int(dlg.EndTimeMonth.GetValue()),  \
+                   int(dlg.EndTimeDay.GetValue()),int(dlg.EndTimeHour.GetValue()),    \
+                   int(dlg.EndTimeMinute.GetValue())
+                   )
+        apointID=int(dlg.ApointID.GetValue())
+        
+        Obj.CommonHeader=FrameHeader(0x55,functionPara,0x0F,0)
+        Obj.CommonTail=self.tail
+        Obj.ApointID_h=apointID>>8
+        Obj.ApointID_l=apointID&0x00FF
+        Obj.StartTime=self.ByteToTime(startTime)
+        Obj.EndTime=self.ByteToTime(endTime)
+        
+        frameLen=len(Obj)
+        self.serverCom.SendQueryData(frameLen,Obj)
+        
+  
 
     #############指定终端历史IQ数据请求######################
     def OnSetDemodTime(self,event):
         dlg=AllDialog.SetDemodTimeDialog()
         result=dlg.ShowModal()  
         if(result==wx.ID_OK):
-            pass
+            self.HistoryDataQuery(dlg, 0xAC)
         dlg.Destroy()
 
 
@@ -821,6 +1066,7 @@ class MainWindow(wx.MDIParentFrame):
                 self.Bind(wx.EVT_WINDOW_DESTROY,self.OnCloseWaveFrame,self.WaveFrame)
                 self.Tile(wx.HORIZONTAL)
                 waveShow=True
+                self.threadRecv_drawIQ.WaveFrame=self.WaveFrame
                     
         elif(string=="Spectrum"):
             if(not specShow):
@@ -837,6 +1083,7 @@ class MainWindow(wx.MDIParentFrame):
                 self.Bind(wx.EVT_WINDOW_DESTROY,self.OnCloseWaterFrame,self.WaterFrame)
                 self.Tile(wx.HORIZONTAL)
                 waterShow=True
+                self.threadRecv_drawFFT=self.WaterFrame
         elif(string=="Demod Wave"):
             if(not demodWaveShow):
                 self.DemodWaveFrame=WaveIQ(self,"Demod Wave")

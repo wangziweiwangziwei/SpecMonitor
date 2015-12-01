@@ -3,8 +3,7 @@ import wx
 from numpy import array, linspace
 import matplotlib
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas 
-from matplotlib.cm import  jet 
-from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
+
 
 class Spec(wx.MDIChildFrame):
     def __init__(self,parent):
@@ -55,7 +54,7 @@ class PanelSpec(wx.Panel):
     def __init__(self,parent):
         wx.Panel.__init__(self,parent)
         self.CreatePanel()
-        self.setSpLabel()
+        self.setSpLabel(intv=300e6)
     def CreatePanel(self):
         self.Figure = matplotlib.figure.Figure()
         self.axes=self.Figure.add_axes([0.05,0.05,0.93,0.93])
@@ -63,48 +62,43 @@ class PanelSpec(wx.Panel):
         sizer=wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.FigureCanvas,1,wx.EXPAND)
         self.SetSizer(sizer)
-    def setSpLabel(self, begin_X=0, end_X=50e6,begin_Y=-150,end_Y=0): 
-        if(begin_Y==-150 and end_Y==0):
-            self.yticks=range(-150,1,10)
-            self.ylabel('dBFS')
-        else:
-            begin_Y=begin_Y/10*10
-            end_Y=end_Y/10*10
-            interval = 10
-            yLabelNum=(end_Y-begin_Y)/interval
-            self.yticks = [begin_Y+i*interval for i in range(yLabelNum+1)]
-
-        yticklabels = [str(int(i*10)/10.0) for i in self.yticks]
+        Array=linspace(70, 5995,238)
+        xDataList=[]
+        self.LineSpec=[]
+        for i in xrange(237):
+            xData=linspace(Array[i],Array[i+1],1024)
+            xDataList.append(xData)
+        
+        ydata=[0]*1024
+        for xData in xDataList:
+            lineSpec,=self.axes.plot(xData*1e6,ydata,'y')
+            self.LineSpec.append(lineSpec)
+      
+        self.LineSPecBack,=self.axes.plot([],[],'r')
+    def setSpLabel(self, begin_X=70e6,intv=5e6, end_X=5995e6,begin_Y=-120,end_Y=60): 
+        self.ylabel('dBm')
+        self.xlabel('MHz')
         self.ylim(begin_Y,end_Y)
         self.xlim(begin_X,end_X)
-
-
-        if( begin_X==0 and end_X==50e6):
-            self.xticks=range(int(0),int(50e6+1),int(5e6))
-            self.xlabel('MHz')
-        else:
-            xLabelNum = 10
-            interval = (end_X - begin_X)/xLabelNum
-            self.xticks = [begin_X+i*interval for i in range(xLabelNum+1)]
-
-        xticklabels = [str(int(100*i/1e6)/100.0) for i in self.xticks]
-        self.axes.set_xticks(self.xticks)
+        yticks=range(-120,60+1,10)
+        yticklabels = [str(i) for i in yticks]  
+        xticks=range(int(70e6),int(5995e6+1),int(intv))
+        xticklabels = [str(int(100*i/1e6)/100.0) for i in xticks]
+        self.axes.set_xticks(xticks)
         self.axes.set_xticklabels(xticklabels,rotation=0)
-        self.axes.set_yticks(self.yticks)
+        self.axes.set_yticks(yticks)
         self.axes.set_yticklabels(yticklabels,rotation=0)
         self.axes.grid(True)
 
-    def PowerSpectrum(self, y):
-        if self.btnStopFlg == 0:
-            self.yData = y
-            '''
-            self.LineSpec.set_ydata(array(self.yData))
-            self.FigureCanvas.restore_region(self.background)
-            self.axes.draw_artist(self.LineSpec)
-            self.FigureCanvas.blit(self.axes.bbox)
-            '''
-            self.LineSpec.set_ydata(array(self.yData))
-            self.FigureCanvas.draw()
+    def PowerSpectrum(self, y,funcPara,curSectionNo):
+       
+        if(funcPara==0x0D):
+            self.LineSpec[curSectionNo-1].set_ydata(array(y))
+        elif(funcPara==0x1D):
+            pass
+            #self.LineSPecBack.set_ydata(array(y))
+        self.FigureCanvas.draw()
+                
             
 
     def xlim(self,x_min,x_max):  

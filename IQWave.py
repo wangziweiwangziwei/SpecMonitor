@@ -15,20 +15,17 @@ class WaveIQ(wx.MDIChildFrame):
         self.Fs=5e6
         self.CreatePanel()  
         self.setWaveLabel()
-        
 
     def CreatePanel(self):
         self.Figure = matplotlib.figure.Figure(figsize=(1,1))
         self.axes=self.Figure.add_axes([0.05,0.05,0.93,0.93])
         self.FigureCanvas = FigureCanvas(self,-1,self.Figure)
-       
+        xdata=[i for i in xrange(2000)]
+        ydata=[0]*2000
+        self.LineWave,=self.axes.plot(xdata,ydata,'w')
 
-    def setWaveLabel(self,begin_X=0,end_X=9.81,begin_Y=-1.3,end_Y=1.3):   
-        if(begin_X<0):begin_X=0
-        if(end_Y>1.3):
-            end_Y=1.3 
-            begin_Y=-1.3 
-
+    def setWaveLabel(self,begin_X=0,end_X=100,begin_Y=-1000,end_Y=1000):   
+    
         yLabelNum=8
         self.axes.set_xlim(begin_X,end_X)
         self.axes.set_ylim(begin_Y,end_Y)
@@ -41,10 +38,7 @@ class WaveIQ(wx.MDIChildFrame):
         interval = (end_X-begin_X)/xLabelNum
         xticks = [begin_X+interval*i for i in range(xLabelNum+1)]
         xticklabels = [str('%0.2f'%i) for i in xticks]
-        if(self.Fs==5e6):
-            self.axes.set_xlabel('ms')
-        if(self.Fs==40000):
-            self.axes.set_xlabel('s')
+        self.axes.set_xlabel('s')
         self.axes.set_xticks(xticks)
         self.axes.set_xticklabels(xticklabels,rotation=0)
         self.axes.set_yticks(yticks)
@@ -53,8 +47,8 @@ class WaveIQ(wx.MDIChildFrame):
 
 
     def Wave(self,fs,chData):
-        pass
-    
+        self.LineWave.set_ydata(chData)
+        self.FigureCanvas.draw()    
 
         
         

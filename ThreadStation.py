@@ -59,12 +59,11 @@ class ReceiveServerData(threading.Thread):
                 for i in range(3):
                     col = self.specFrame.panelQuery.GetColumn(i)
                     col.SetText(List[i][1])
-                    self.specFrame.panelQuery.SetColumn(i, col)
-                self.ReadFreqPlanResponse(ListData)
-                
+                    self.specFrame.panelQuery.SetColumn(i, col)      
                 for i in range(7):
-                    self.specFrame.panelQuery.InsertColumn(i+3,u"业务类型"+str(i))
-                    self.specFrame.panelQuery.SetColumnWidth(100)
+                    self.specFrame.panelQuery.InsertColumn(i+3,u"业务类型"+str(i+3))
+                    self.specFrame.panelQuery.SetColumnWidth(i+3,100)
+                self.ReadFreqPlanResponse(ListData)
             else:
                 print 'frameFlag  Error'
            

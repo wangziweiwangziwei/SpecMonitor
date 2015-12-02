@@ -152,7 +152,7 @@ class ThresSet(BigEndianStructure):
 class IQParaSet(BigEndianStructure):
     _fields_=[("CommonHeader",FrameHeader),
               ("BandWidth",c_uint8,4),
-              ("DataRate",TimeSet),
+              ("DataRate",c_uint8,4),
               ("UploadNum",c_uint8),
               ("Time",TimeSet),
               ("CommonTail",FrameTail)
@@ -428,5 +428,90 @@ class ReqData(BigEndianStructure):
              ("EndTime",c_uint8),
              ("CommonTail",FrameTail)
              ]
+
+#################高级别终端改变另一终端的各种参数#######
+class ChangeSweep(BigEndianStructure):
+    _field_=[("CommonHeader",FrameHeader),
+             ("ApointID_l",c_uint8),
+             ("ApointID_h",c_uint8),
+              ("SweepRecvMode",c_uint8,6),
+               ("FileUploadMode",c_uint8,2),
+               ("SweepSectionTotalNum",c_uint8),
+               ("SweepSectionNo",c_uint8),
+
+               ("StartSectionNo",c_uint8),
+               ("StartSixBit0",c_uint8,6),
+               ("HighStartFreq",c_uint8,2),
+               ("LowStartFreq",c_uint8),
+           
+               ("EndSectionNo",c_uint8),
+               ("EndSixBit0",c_uint8,6),
+               ("HighEndFreq",c_uint8,2),
+               ("LowEndFreq",c_uint8),
+                
+               ("ChangeThres",c_uint8,2),
+               ("ExtractM",c_uint8,6),
+              ("RecvGain",c_uint8),
+             
+              ("ThresMode",c_uint8),
+              ("AdaptThres",c_uint8),
+              ("HighFixedThres",c_uint8),
+              ("LowFixedThres",c_uint8) 
+             
+             ]
+    
+class ChangeIQPara(BigEndianStructure):
+    _fields_=[("CommonHeader",FrameHeader),
+              ("ApointID",c_uint8),
+                ("FreqNum",c_uint8),
+              ("FreqArray",CentreFreq*3),
+              ("RecvGain",c_uint8),
+              ("BandWidth",c_uint8,4),
+              ("DataRate",c_uint8,4),
+              ("UploadNum",c_uint8),
+              ("Time",TimeSet),
+              ("CommonTail",FrameTail)
+            ]
+
+class ChangePressPara(BigEndianStructure):
+    _field_=[("CommonHeader",FrameHeader),
+             ("ApointID_l",c_uint8),
+             ("ApointID_h",c_uint8),
+             ("PressNum",c_uint8),
+             ("FreqArray",CentreFreq*2),
+             ("SendWeak",c_uint8), 
+              ("PressMode",c_uint8),
+              ("PressSignal",c_uint8,4),
+              ("PressSignalBandWidth",c_uint8,4),
+              ("HighT1",c_uint8),
+              ("LowT1",c_uint8),
+              ("HighT2",c_uint8),
+              ("LowT2",c_uint8),
+              ("HighT3",c_uint8),
+              ("LowT3",c_uint8),
+              ("HighT4",c_uint8),
+              ("LowT4",c_uint8),
+              ("CommonTail",FrameTail)
+             ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

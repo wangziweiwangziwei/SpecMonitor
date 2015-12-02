@@ -421,30 +421,39 @@ class MainWindow(wx.MDIParentFrame):
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
             freqNum=dlg.radioFreq.GetSelection()
-            if(dlg.radioBox.GetSelection()==0):
-                oneFreqT1=int(dlg.textPressTime1.GetValue())
-                oneFreqT2=int(dlg.textPressWait.GetValue())
+            pressMode=dlg.radioBox.GetSelection()
+            if(pressMode==0):
                 if(freqNum==0):
-                    pressMode=0x02
+                    Mode=0x02
+                    oneFreqT1=int(dlg.textPressTime1.GetValue())
+                    oneFreqT2=int(dlg.textPressWait.GetValue())
                 else:
-                    pressMode=0x04
-            elif(dlg.radioBox.GetSelection()==1):
-                twoFreqT1=int(dlg.textPressTotal.GetValue())
-                twoFreqT2=int(dlg.textPressWait.GetValue())
-                twoFreqT3=int(dlg.textPressTime1.GetValue())
-                twoFreqT4=int(dlg.textPressTime2.GetValue())
-                
+                    Mode=0x04
+                    twoFreqT1=int(dlg.textPressTotal.GetValue())
+                    twoFreqT2=int(dlg.textPressWait.GetValue())
+                    twoFreqT3=int(dlg.textPressTime1.GetValue())
+                    twoFreqT4=int(dlg.textPressTime2.GetValue())
+                    
+            elif(pressMode==1):
                 if(freqNum==0):
-                    pressMode=0x01
+                    Mode=0x01
+                    oneFreqT1=int(dlg.textPressTime1.GetValue())
+                    oneFreqT2=int(dlg.textPressWait.GetValue())
                 else:
-                    pressMode=0x03
+                    Mode=0x03
+                    twoFreqT1=int(dlg.textPressTotal.GetValue())
+                    twoFreqT2=int(dlg.textPressWait.GetValue())
+                    twoFreqT3=int(dlg.textPressTime1.GetValue())
+                    twoFreqT4=int(dlg.textPressTime2.GetValue())
+                    
             else:
-                    pressMode=0x05
+                Mode=0x05
+            
             
             PressSignal=dlg.combox.GetSelection()    
             pressSet=PressParaSet()   
             header=FrameHeader(0x55,0x08,0x0F,0)
-            pressSet.PressMode=pressMode
+            pressSet.PressMode=Mode
             pressSet.CommonHeader=header
             pressSet.PressSignal=PressSignal+1
             if(PressSignal==2 or PressSignal==3):
@@ -558,6 +567,9 @@ class MainWindow(wx.MDIParentFrame):
             sweepRangeSet.CommonHeader=FrameHeader(0x55,0x01,0x0F,0)
             sweepRangeSet.CommonTail=self.tail
             sweepRangeSet.SweepRecvMode=2
+            sweepRangeSet.SweepSectionNo=1
+            sweepRangeSet.SweepSectionTotalNum=1
+            
             if(dlg.radioM.GetValue()):
                 sweepRangeSet.FileUploadMode=3
                 sweepRangeSet.ExtractM=int(dlg.textM.GetValue())
@@ -614,11 +626,11 @@ class MainWindow(wx.MDIParentFrame):
                 sweepRangeSet.FileUploadMode=1
                 
             totalNum=0
-            listFreq=[(dlg.FreqStart1.GetValue(),dlg.FreqStart1.GetValue()),  \
-                      (dlg.FreqStart2.GetValue(),dlg.FreqStart2.GetValue()),  \
-                      (dlg.FreqStart3.GetValue(),dlg.FreqStart3.GetValue()),  \
-                      (dlg.FreqStart4.GetValue(),dlg.FreqStart4.GetValue()),  \
-                      (dlg.FreqStart5.GetValue(),dlg.FreqStart5.GetValue())
+            listFreq=[(dlg.FreqStart1.GetValue(),dlg.FreqEnd1.GetValue()),  \
+                      (dlg.FreqStart2.GetValue(),dlg.FreqEnd2.GetValue()),  \
+                      (dlg.FreqStart3.GetValue(),dlg.FreqEnd3.GetValue()),  \
+                      (dlg.FreqStart4.GetValue(),dlg.FreqEnd4.GetValue()),  \
+                      (dlg.FreqStart5.GetValue(),dlg.FreqEnd5.GetValue())
                       ]  
             for i in range(5):
                 if(listFreq[i][0]):
@@ -653,6 +665,7 @@ class MainWindow(wx.MDIParentFrame):
             iqPara.CommonHeader=FrameHeader(0x55,0x07,0x0F,0)
             iqPara.CommonTail=self.tail
             iqPara.BandWidth=bandWidth+1
+            iqPara.DataRate=bandWidth+1
             iqPara.UploadNum=uploadNum
             Year=int(curTime[0:4])
             Month=int(curTime[4:6])
@@ -660,16 +673,15 @@ class MainWindow(wx.MDIParentFrame):
             Hour=int(curTime[8:10])
             Min=int(curTime[10:12])
             Second=int(curTime[12:14])+delayTime
-            iqPara.DataDate.HighYear=Year>>4
-            iqPara.DataDate.LowYear=Year&0x00F
-            iqPara.DataDate.Month=Month
-            iqPara.DataDate.Day=Day
-            iqPara.DataDate.HighHour=Hour>>2
-            iqPara.DataDate.LowHour=Hour&0x03
-            iqPara.DataDate.Minute=Min
-            iqPara.DataDate.Second=Second
-            for i in bytearray(iqPara):
-                print 'array   '+str(i) 
+            iqPara.Time.HighYear=Year>>4
+            iqPara.Time.LowYear=Year&0x00F
+            iqPara.Time.Month=Month
+            iqPara.Time.Day=Day
+            iqPara.Time.HighHour=Hour>>2
+            iqPara.Time.LowHour=Hour&0x03
+            iqPara.Time.Minute=Min
+            iqPara.Time.Second=Second
+           
             self.outPoint.write(bytearray(iqPara))
            
         dlg.Destroy()
@@ -962,7 +974,7 @@ class MainWindow(wx.MDIParentFrame):
         structObj=QueryFreqPlan(header,highFreqStart,midFreqStart,  \
                                 lowFreqStart,highFreqEnd,midFreqEnd,lowFreqEnd,self.tail)
        
-        frameLen=len(structObj)
+        frameLen=11
         self.serverCom.SendQueryData(frameLen,structObj)
 
 
@@ -974,12 +986,194 @@ class MainWindow(wx.MDIParentFrame):
         dlg=AllDialog.ChangeAnotherSweep()
         result=dlg.ShowModal()
         if(result==wx.ID_OK):
-            pass
+            apointID=int(dlg.ApointID.GetValue())
+            recvMode=dlg.RadioBoxSweep.GetSelection()
+            transMode=dlg.RadioBoxTrans.GetSelection()
+            thresMode=dlg.RadioBoxThres.GetSelection()
+            sweepRangeSet=ChangeSweep()
+            sweepRangeSet.CommonHeader=FrameHeader(0x55,0xAD,0x0F,0)
+            sweepRangeSet.CommonTail=self.tail
+            
+            sweepRangeSet.ApointID_l=apointID&0x00FF
+            sweepRangeSet.ApointID_h=apointID>>8
+            sweepRangeSet.SweepRecvMode=recvMode+1
+            sweepRangeSet.FileUploadMode=transMode+1
+            
+            if(transMode==2):
+                sweepRangeSet.ExtractM=int(dlg.textM.GetValue())
+            elif(transMode==1):
+                sweepRangeSet.ChangeThres=int(dlg.ChangeThres.GetValue())
+            sweepRangeSet.RecvGain=int(dlg.sliderGain.GetValue())+3
+            sweepRangeSet.ThresMode=thresMode
+            
+            if(thresMode):
+                sweepRangeSet.HighFixedThres=int(dlg.StaticThres.GetValue())>>8
+                sweepRangeSet.LowFixedThres=int(dlg.StaticThres.GetValue())&0x00FF
+            else:
+                sweepRangeSet.AdaptThres=int(dlg.AdaptThres.GetValue())
+                
+            if(recvMode==0):
+                self.outPoint.write(bytearray(sweepRangeSet))
+            
+            elif(recvMode==1):
+                sweepRangeSet.SweepSectionTotalNum=1
+                sweepRangeSet.SweepSectionNo=1
+                freqStart=int(dlg.FreqStart1.GetValue())
+                freqEnd=int(dlg.FreqEnd1.GetValue())
+                array=self.SweepSection(freqStart, freqEnd)
+                sweepRangeSet=self.FillSweepRange(sweepRangeSet, array)
+                self.outPoint.write(bytearray(sweepRangeSet))
+            else:    
+                totalNum=0
+                listFreq=[(dlg.FreqStart1.GetValue(),dlg.FreqEnd1.GetValue()),  \
+                          (dlg.FreqStart2.GetValue(),dlg.FreqEnd2.GetValue()),  \
+                          (dlg.FreqStart3.GetValue(),dlg.FreqEnd3.GetValue()),  \
+                          (dlg.FreqStart4.GetValue(),dlg.FreqEnd4.GetValue()),  \
+                          (dlg.FreqStart5.GetValue(),dlg.FreqEnd5.GetValue())
+                          ]  
+                for i in range(5):
+                    if(listFreq[i][0]):
+                        totalNum+=1
+                sweepRangeSet.SweepSectionTotalNum=totalNum
+                for i in range(5):
+                    if(listFreq[i][0]):
+                        sweepRangeSet.SweepSectionNo=i+1
+                        freqStart=int(listFreq[i][0])
+                        freqEnd=int(listFreq[i][1])
+                        array=self.SweepSection(freqStart, freqEnd)
+                        sweepRangeSet=self.FillSweepRange(sweepRangeSet, array)
+                        self.outPoint.write(bytearray(sweepRangeSet))
+                      
         dlg.Destroy()
     def OnChangeAnotherIQPara(self,event):
-        pass
+        dlg=AllDialog.ChangeAnotherIQ()
+        result=dlg.ShowModal()
+        if(result==wx.ID_OK):
+            bandWidth=int(dlg.BandWidth.GetSelection())
+            uploadNum=int(dlg.textUploadNum.GetValue())
+            delayTime=int(dlg.textDelay.GetValue())
+            
+            curTime=time.strftime('%Y%m%d%H%M%S',time.localtime(time.time()))
+            iqPara=ChangeIQPara()
+            iqPara.CommonHeader=FrameHeader(0x55,0xAE,0x0F,0)
+            iqPara.CommonTail=self.tail
+            iqPara.RecvGain=int(dlg.sliderGain.GetValue())+3
+            iqPara.ApointID=int(dlg.ApointID.GetValue())
+            iqPara.BandWidth=bandWidth+1
+            iqPara.DataRate=bandWidth+1
+            iqPara.UploadNum=uploadNum
+            Year=int(curTime[0:4])
+            Month=int(curTime[4:6])
+            Day=int(curTime[6:8])
+            Hour=int(curTime[8:10])
+            Min=int(curTime[10:12])
+            Second=int(curTime[12:14])+delayTime
+            iqPara.Time.HighYear=Year>>4
+            iqPara.Time.LowYear=Year&0x00F
+            iqPara.Time.Month=Month
+            iqPara.Time.Day=Day
+            iqPara.Time.HighHour=Hour>>2
+            iqPara.Time.LowHour=Hour&0x03
+            iqPara.Time.Minute=Min
+            iqPara.Time.Second=Second
+           
+            listFreq=[]
+            Freq1=float(dlg.textFreq1.GetValue())
+            Freq2=dlg.textFreq2.GetValue()
+            Freq3=dlg.textFreq3.GetValue()
+            listFreq.append(Freq1)
+            if(Freq2):
+                listFreq.append(float(Freq2))
+            if(Freq3):
+                listFreq.append(float(Freq3))
+            for i in xrange(len(listFreq)):
+                array=self.FreqToByte(listFreq[i])
+                iqPara.FreqArray[i]=CentreFreq(array[0],array[1],array[2],array[3])
+            iqPara.FreqNum=len(listFreq)
+       
+            self.outPoint.write(bytearray(iqPara))
+            
+        dlg.Destroy()   
     def OnChangeAnotherPress(self,event):
-        pass
+        dlg=AllDialog.ChangeAnotherPress()
+        result=dlg.ShowModal()
+        if(result==wx.ID_OK):
+            freqNum=dlg.radioFreq.GetSelection()
+            pressMode=dlg.radioBox.GetSelection()
+            if(pressMode==0):
+                if(freqNum==0):
+                    Mode=0x02
+                    oneFreqT1=int(dlg.textPressTime1.GetValue())
+                    oneFreqT2=int(dlg.textPressWait.GetValue())
+                else:
+                    Mode=0x04
+                    twoFreqT1=int(dlg.textPressTotal.GetValue())
+                    twoFreqT2=int(dlg.textPressWait.GetValue())
+                    twoFreqT3=int(dlg.textPressTime1.GetValue())
+                    twoFreqT4=int(dlg.textPressTime2.GetValue())
+                    
+            elif(pressMode==1):
+                if(freqNum==0):
+                    Mode=0x01
+                    oneFreqT1=int(dlg.textPressTime1.GetValue())
+                    oneFreqT2=int(dlg.textPressWait.GetValue())
+                else:
+                    Mode=0x03
+                    twoFreqT1=int(dlg.textPressTotal.GetValue())
+                    twoFreqT2=int(dlg.textPressWait.GetValue())
+                    twoFreqT3=int(dlg.textPressTime1.GetValue())
+                    twoFreqT4=int(dlg.textPressTime2.GetValue())
+                    
+            else:
+                Mode=0x05
+            
+            PressSignal=dlg.combox.GetSelection()   
+            apointID=int(dlg.ApointID.GetValue()) 
+            pressSet=ChangePressPara()   
+            pressSet.PressMode=Mode
+            pressSet.ApointID_l=apointID&0x00FF
+            pressSet.ApointID_h=apointID>>8
+            pressSet.PressNum=freqNum+1
+            pressSet.SendWeak=int(dlg.sliderWeak.GetValue())
+            pressSet.CommonHeader=FrameHeader(0x55,0xAF,0x0F,0)
+            pressSet.CommonTail=self.tail
+            pressSet.PressSignal=PressSignal+1
+            if(PressSignal==2 or PressSignal==3):
+                pressSet.PressSignalBandWidth=PressSignal
+            else:
+                pressSet.PressSignalBandWidth=PressSignal+1
+            if(freqNum==0):
+                pressSet.HighT1=oneFreqT1>>8
+                pressSet.LowT1=oneFreqT1&0x00FF
+                pressSet.HighT2=oneFreqT2>>8
+                pressSet.LowT2= oneFreqT2&0x00FF   
+                PressFreq1=float(dlg.textPressFreq1.GetValue())
+                array1=self.FreqToByte(PressFreq1)
+                pressSet.FreqArray[0]=CentreFreq(array1[0],array1[1],array1[2],array1[3]) 
+                 
+            else:
+                pressSet.HighT1=twoFreqT1>>8
+                pressSet.LowT1=twoFreqT1&0x00FF
+                pressSet.HighT2=twoFreqT2>>8
+                pressSet.LowT2= twoFreqT2&0x00FF
+                pressSet.HighT3=twoFreqT3>>8
+                pressSet.LowT3=twoFreqT3&0x00FF
+                pressSet.HighT4=twoFreqT4>>8
+                pressSet.LowT4=twoFreqT4&0x00FF 
+        
+                PressFreq1=float(dlg.textPressFreq1.GetValue())
+                PressFreq2=float(dlg.textPressFreq2.GetValue())
+                array1=self.FreqToByte(PressFreq1)
+                array2=self.FreqToByte(PressFreq2)
+                pressSet.FreqArray[0]=CentreFreq(array1[0],array1[1],array1[2],array1[3])    
+                pressSet.FreqArray[1]=CentreFreq(array2[0],array2[1],array2[2],array2[3])
+            
+            self.outPoint.write(bytearray(pressSet))
+            
+             
+        dlg.Destroy()
+            
+            
 
     #############指定终端历史功率谱文件请求#####################
     def OnSetSpecTime(self,event):

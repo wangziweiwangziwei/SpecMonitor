@@ -37,7 +37,8 @@ class WeakSetDialog(wx.Dialog):
     def __init__(self):
         wx.Dialog.__init__(self,None,-1,u"发射衰减设置",size=(300,200))
         wx.StaticBox(self, -1, u'发射衰减(dB)', (10, 20), size=(240, 60))
-        self.sliderWeak = wx.Slider(self,-1, 7,-1, 73, (20, 40), (220, -1),wx.SL_AUTOTICKS | wx.SL_HORIZONTAL | wx.SL_LABELS)
+        self.sliderWeak = wx.Slider(self,-1, 7,-1, 73, (20, 40), (220, -1), \
+                                    wx.SL_AUTOTICKS | wx.SL_HORIZONTAL | wx.SL_LABELS)
         wx.Button(self,wx.ID_OK,"OK",(20,100),(60,20))
         wx.Button(self,wx.ID_CANCEL,"CANCEL",(100,100),(60,20))
 class ThresSetDialog(wx.Dialog):
@@ -366,10 +367,8 @@ class MutiSweepSetDialog(wx.Dialog):
         panel.SetSizer(sizer)
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadio)
         self.textM.Enable(False)
-        self.Bind(wx.EVT_CHECKBOX,self.OnCheck,self.Check2)
-        self.Bind(wx.EVT_CHECKBOX,self.OnCheck,self.Check3)
-        self.Bind(wx.EVT_CHECKBOX,self.OnCheck,self.Check4)
-        self.Bind(wx.EVT_CHECKBOX,self.OnCheck,self.Check5)
+        self.Bind(wx.EVT_CHECKBOX,self.OnCheck)
+        
         
         self.FreqStart2.Enable(False)
         self.FreqStart3.Enable(False)
@@ -396,14 +395,14 @@ class MutiSweepSetDialog(wx.Dialog):
         if(self.Check2.GetValue()):
             self.FreqStart2.Enable(True)
             self.FreqEnd2.Enable(True)
-        elif(self.Check3.GetValue()):
+        if(self.Check3.GetValue()):
             self.FreqStart3.Enable(True)
             self.FreqEnd3.Enable(True)
-        elif(self.Check4.GetValue()):
+        if(self.Check4.GetValue()):
             self.FreqStart4.Enable(True)
             self.FreqEnd4.Enable(True)
         
-        elif(self.Check5.GetValue()):
+        if(self.Check5.GetValue()):
             self.FreqStart5.Enable(True)
             self.FreqEnd5.Enable(True)
   
@@ -912,10 +911,7 @@ class ChangeAnotherSweep(wx.Dialog):
         self.Bind(wx.EVT_RADIOBOX, self.OnRadio)
         self.textM.Enable(False)
         self.StaticThres.Enable(False)
-        self.Bind(wx.EVT_CHECKBOX,self.OnCheck,self.Check2)
-        self.Bind(wx.EVT_CHECKBOX,self.OnCheck,self.Check3)
-        self.Bind(wx.EVT_CHECKBOX,self.OnCheck,self.Check4)
-        self.Bind(wx.EVT_CHECKBOX,self.OnCheck,self.Check5)
+        self.Bind(wx.EVT_CHECKBOX,self.OnCheck)
         
         self.FreqStart2.Enable(False)
         self.FreqStart3.Enable(False)
@@ -952,24 +948,132 @@ class ChangeAnotherSweep(wx.Dialog):
             if(self.Check2.GetValue()):
                 self.FreqStart2.Enable(True)
                 self.FreqEnd2.Enable(True)
-            elif(self.Check3.GetValue()):
+            if(self.Check3.GetValue()):
                 self.FreqStart3.Enable(True)
                 self.FreqEnd3.Enable(True)
-            elif(self.Check4.GetValue()):
+            if(self.Check4.GetValue()):
                 self.FreqStart4.Enable(True)
                 self.FreqEnd4.Enable(True)
             
-            elif(self.Check5.GetValue()):
+            if(self.Check5.GetValue()):
                 self.FreqStart5.Enable(True)
                 self.FreqEnd5.Enable(True)
 
-class ChangeAnotherIQPara(wx.Dialog):
+class ChangeAnotherIQ(wx.Dialog):
     def __init__(self):
-        wx.Dialog.__init__(self,None,-1,u"台站登记属性查询",size=(350,350))
+        wx.Dialog.__init__(self,None,-1,u"改变另一终端定频参数",size=(350,500))
+        wx.StaticText(self,-1,u"频率个数",pos=(20,20))
+        wx.StaticLine(self,-1,pos=(20,40),size=(220,2),style=wx.LI_HORIZONTAL)
+
+        sampleList=[u"1个",u"2个",u"3个"]
+        self.radioBox= wx.RadioBox(self, -1,pos=(20,50),size=(100,30),choices=sampleList)
+        self.radioBox.SetSelection(0)
+
+        wx.StaticText(self,-1,u"频率值 (MHz)",pos=(20,120))
+        wx.StaticLine(self,-1,pos=(20,140),size=(220,2),style=wx.LI_HORIZONTAL)
+
+        self.textFreq1=wx.TextCtrl(self,-1,"",(20,160),(60,25))
+        self.textFreq2=wx.TextCtrl(self,-1,"",(100,160),(60,25))
+        self.textFreq3=wx.TextCtrl(self, -1,"",(180,160),(60,25))
+
+        self.textFreq2.Enable(False)
+        self.textFreq3.Enable(False)
+        self.Bind(wx.EVT_RADIOBOX,self.OnRadio,self.radioBox)
+        
+        wx.StaticText(self,-1,u"指定终端设备ID：" ,(30,200))
+        self.ApointID=wx.TextCtrl(self,-1,"1",(200,200),(100,25))
+        
+        wx.StaticText(self,-1,u"带宽/数据率 (MHz/Msps):",pos=(30,240))
+        sampleList = ['5/5','2.5/2.5','1/1','0.5/0/5','0.1/0/1']
+        self.BandWidth = wx.ComboBox(self, -1,'5/5',pos=(200,240),size=(100,30),choices=sampleList)
+        
+        wx.StaticText(self,-1,u"上传数据块个数(1-256) : ",(30,280))
+        self.textUploadNum=wx.TextCtrl(self,-1,"1",(200,280),(100,25))
+        
+        wx.StaticText(self,-1,u"延时时间(s): ",(30,320))
+        self.textDelay=wx.TextCtrl(self,-1,"",(200,320),(100,25))
+        
+        wx.StaticBox(self, -1, u'接受增益(dB)', (30, 360), size=(240, 60))
+        self.sliderGain = wx.Slider(self,-1, 7,-1, 73, (20, 380), (220, -1), \
+                                    wx.SL_AUTOTICKS | wx.SL_HORIZONTAL | wx.SL_LABELS)
+        
+        wx.Button(self,wx.ID_OK,"OK",size=(60,20),pos=(20,440))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(100,440),(60,20))
+        
+    def OnRadio(self,event):
+        switch=self.radioBox.GetSelection()
+        if(switch==0):
+            self.textFreq2.Enable(False)
+            self.textFreq3.Enable(False)
+        elif(switch==1):
+            self.textFreq2.Enable(True)
+            self.textFreq3.Enable(False)
+        elif(switch==2):
+            self.textFreq2.Enable(True)
+            self.textFreq3.Enable(True)
+        else:
+            pass 
+        
+        
 class ChangeAnotherPress(wx.Dialog):
     def __init__(self):
-        wx.Dialog.__init__(self,None,-1,u"台站登记属性查询",size=(350,350))
+        wx.Dialog.__init__(self,None,-1,u"改变另一终端压制参数",size=(400,550))
+        sampleList=[u"手动",u"自动",u"不压制"]
+        self.radioBox= wx.RadioBox(self, -1,label=u"压制模式",pos=(20,15), \
+                                   size=(100,30),choices=sampleList)
+        self.radioBox.SetSelection(2)
+        
+        sampleList=[u"单频点",u"双频点"]
+        self.radioFreq= wx.RadioBox(self, -1,label=u"压制个数",pos=(20,70), \
+                                    size=(100,30),choices=sampleList)
+        self.radioFreq.SetSelection(0)
+        
+        wx.StaticText(self,-1,u"压制信号类型：",pos=(20,130))
+        sampleList = [u'单频正弦',u'等幅多频',u'噪声调频',u'数字射频']
+        self.combox = wx.ComboBox(self, -1,u'单频正弦',pos=(150,130),size=(80,30), \
+                                  choices=sampleList)
+        
+        wx.StaticText(self,-1,u"压制时间 (ms): ",(20,170),(100,25))
+        wx.StaticText(self,-1,u"等待时间 (ms): ",(20,200),(100,25))
+        wx.StaticText(self,-1,u"压制总时间 (ms)",(20,230),(100,25))
+        
+        self.textPressTime1=wx.TextCtrl(self,-1,"",(150,170),(80,25))
+        self.textPressTime2=wx.TextCtrl(self, -1,"",(250,170),(80,25))
 
+        self.textPressWait=wx.TextCtrl(self,-1,"",(150,200),(80,25))
+        self.textPressTotal=wx.TextCtrl(self, -1,"",(150,230),(80,25))
+        
+        wx.StaticText(self,-1,u"频点频率 1(MHz): ",(20,270),(100,25))
+        wx.StaticText(self,-1,u"频点频率 2(MHz): ",(20,310),(100,25))
+        self.textPressFreq1=wx.TextCtrl(self,-1,"",(150,270),(80,25))
+        self.textPressFreq2=wx.TextCtrl(self,-1,"",(150,310),(80,25))
+        
+        wx.StaticText(self,-1,u"指定终端设备ID: ",(20,350),(100,25))
+        self.ApointID=wx.TextCtrl(self,-1,"",(150,350),(80,25))
+        
+        wx.StaticBox(self, -1, u'发射衰减(dB)', (10, 390), size=(240, 60))
+        self.sliderWeak = wx.Slider(self,-1, 7,-1, 73, (20, 410), (220, -1), \
+                                    wx.SL_AUTOTICKS | wx.SL_HORIZONTAL | wx.SL_LABELS)
+        wx.Button(self,wx.ID_OK,"OK",(20,470),(60,20))
+        wx.Button(self,wx.ID_CANCEL,"CANCEL",(120,470),(60,20))
+        
+        self.Bind(wx.EVT_RADIOBOX,self.OnRadio,self.radioFreq)
+        self.textPressTime2.Enable(False)
+        self.textPressTotal.Enable(False)
+       
+        self.textPressFreq2.Enable(False)
+            
+    def OnRadio(self,event):
+        if(self.radioFreq.GetSelection()==0):
+            self.textPressTime2.Enable(False)
+            self.textPressTotal.Enable(False)
+            self.textPressFreq2.Enable(False)
+        else:
+            self.textPressTime2.Enable(True)
+            self.textPressTotal.Enable(True)    
+            self.textPressFreq2.Enable(True)
+        
+            
 
 #######################请求指定终端历史功率谱和历史IQ数据#########################
 class SetSpecTimeDialog(wx.Dialog):

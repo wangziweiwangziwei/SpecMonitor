@@ -249,7 +249,7 @@ class ServerCommunication():
     def ConnectToServer(self):
   
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(('115.156.209.216',9123))
+        sock.connect(('115.156.209.95',9123))
         print 'Client connect !' 
         self.sock=sock
     

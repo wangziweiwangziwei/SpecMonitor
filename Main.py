@@ -295,7 +295,7 @@ class MainWindow(wx.MDIParentFrame):
     ####入网相关######
     def OnConnect(self,event):
         self.serverCom.ConnectToServer()
-        receiveServerDataThread=ReceiveServerData(self.SpecFrame,self.serverCom.sock)
+        receiveServerDataThread=ReceiveServerData(self.SpecFrame,self.serverCom.sock,self.outPoint)
         receiveServerDataThread.start()
         print 'start receiving data thread'
     ###硬件相关################
